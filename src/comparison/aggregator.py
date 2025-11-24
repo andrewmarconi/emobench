@@ -97,20 +97,44 @@ class BenchmarkAggregator:
                     logger.warning(f"Skipping unsupported file: {file_path}")
                     continue
 
-                # Extract model name from filename or data
-                model_name = data.get("model_name", file_path.stem)
+                # Handle different JSON formats
+                if isinstance(data, dict):
+                    # Check if this is a benchmark results file (model names as keys)
+                    if all(isinstance(v, list) for v in data.values()) and data:
+                        # This is a benchmark results file with model names as keys
+                        all_results = []
+                        for model_name, results_list in data.items():
+                            for result in results_list:
+                                result_copy = result.copy()
+                                result_copy["model_name"] = model_name
+                                result_copy["source_file"] = str(file_path)
+                                all_results.append(result_copy)
 
-                # Convert to DataFrame
-                if "results" in data:
-                    df = pd.DataFrame(data["results"])
+                        if all_results:
+                            df = pd.DataFrame(all_results)
+                            # Use filename as key since this contains multiple models
+                            key_name = file_path.stem
+                            self.raw_results[key_name] = df
+                        continue
+
+                    # Check for "results" key
+                    elif "results" in data:
+                        df = pd.DataFrame(data["results"])
+                        model_name = data.get("model_name", file_path.stem)
+                    else:
+                        # Single result entry
+                        df = pd.DataFrame([data])
+                        model_name = data.get("model_name", file_path.stem)
                 elif isinstance(data, list):
                     df = pd.DataFrame(data)
+                    model_name = file_path.stem
                 else:
-                    # Single result entry
-                    df = pd.DataFrame([data])
+                    logger.warning(f"Unsupported data format in {file_path}")
+                    continue
 
                 # Add metadata
-                df["model_name"] = model_name
+                if "model_name" not in df.columns:
+                    df["model_name"] = model_name
                 df["source_file"] = str(file_path)
 
                 self.raw_results[model_name] = df

@@ -4,6 +4,7 @@ Speed benchmarking for EmoBench models.
 
 import logging
 import time
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -58,37 +59,200 @@ class BenchmarkRunner:
         """
         logger.info("Starting comprehensive benchmark")
 
-        # Placeholder implementation
         results = {}
 
         for model in models:
             model_results = []
 
             for dataset in datasets:
-                # Simulate benchmark results
-                result = {
-                    "model_name": model,
-                    "dataset": dataset,
-                    "timestamp": time.time(),
-                }
-
-                # Add simulated metrics
-                for metric in metrics:
-                    if metric == "accuracy":
-                        result[f"metric_{metric}"] = 0.8 + np.random.normal(0, 0.05)
-                    elif metric == "f1":
-                        result[f"metric_{metric}"] = 0.78 + np.random.normal(0, 0.04)
-                    elif metric == "latency_mean_ms":
-                        result[f"{metric}"] = 15.0 + np.random.normal(0, 3.0)
-                    elif metric == "throughput_samples_per_sec":
-                        result[f"{metric}"] = 100.0 + np.random.normal(0, 10.0)
-
-                model_results.append(result)
+                try:
+                    # Load model and evaluate
+                    result = self._evaluate_single_model(model, dataset, metrics)
+                    model_results.append(result)
+                except Exception as e:
+                    logger.error(f"Failed to evaluate {model} on {dataset}: {e}")
+                    # Add failed result
+                    result = {
+                        "model_name": model,
+                        "dataset": dataset,
+                        "timestamp": time.time(),
+                        "error": str(e),
+                    }
+                    for metric in metrics:
+                        result[f"metric_{metric}"] = None
+                    result["latency_mean_ms"] = None
+                    result["throughput_samples_per_sec"] = None
+                    model_results.append(result)
 
             results[model] = model_results
 
         logger.info(f"Benchmark completed for {len(models)} models")
         return results
+
+    def _evaluate_single_model(
+        self,
+        model_name: str,
+        dataset_name: str,
+        metrics: List[str],
+    ) -> Dict:
+        """
+        Evaluate a single model on a dataset.
+
+        Args:
+            model_name: Name of the model
+            dataset_name: Name of the dataset
+            metrics: Metrics to compute
+
+        Returns:
+            Dict: Evaluation results
+        """
+        from datasets import load_dataset, Dataset
+        from src.evaluation.metrics import MetricsCalculator
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+        import torch
+        from pathlib import Path
+
+        logger.info(f"Evaluating {model_name} on {dataset_name}")
+
+        # Find checkpoint path
+        checkpoint_dir = self._find_checkpoint_path(model_name, dataset_name)
+        if not checkpoint_dir:
+            raise FileNotFoundError(f"No checkpoint found for {model_name} on {dataset_name}")
+
+        # Load model and tokenizer
+        model_path = checkpoint_dir / "final"
+        model = AutoModelForSequenceClassification.from_pretrained(str(model_path))
+        tokenizer = AutoTokenizer.from_pretrained(str(model_path))
+
+        # Move model to device
+        device = torch.device(self.device if self.device != "auto" else "cpu")
+        model = model.to(device)
+        model.eval()
+
+        # Load test dataset
+        if dataset_name == "amazon":
+            test_dataset = load_dataset("amazon_polarity", split="test")
+            text_field = "content"
+        elif dataset_name == "imdb":
+            test_dataset = load_dataset("stanfordnlp/imdb", split="test")
+            text_field = "text"
+        else:
+            raise ValueError(f"Unsupported dataset: {dataset_name}")
+
+        # Ensure we have a Dataset object
+        if isinstance(test_dataset, dict):
+            test_dataset = test_dataset["test"]
+
+        # Prepare data
+        def tokenize_function(examples):
+            return tokenizer(
+                examples["text" if "text" in examples else "sentence"],
+                padding="max_length",
+                truncation=True,
+                max_length=512,
+            )
+
+        # Run evaluation on a sample of the dataset
+        all_predictions = []
+        all_labels = []
+        latencies = []
+        sample_count = 0
+        max_samples = 1000  # Limit for benchmarking
+
+        with torch.no_grad():
+            for example in test_dataset:  # type: ignore
+                if sample_count >= max_samples:
+                    break
+
+                example_dict = dict(example)  # Convert to dict
+
+                # Tokenize
+                inputs = tokenizer(
+                    example_dict[text_field],
+                    padding="max_length",
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt",
+                )
+                inputs = {k: v.to(device) for k, v in inputs.items()}
+                labels = torch.tensor(example_dict["label"]).to(device)
+
+                # Measure latency
+                start_time = time.time()
+                outputs = model(**inputs)
+                if device.type == "cuda":
+                    torch.cuda.synchronize()
+                elif device.type == "mps":
+                    torch.mps.synchronize()
+                end_time = time.time()
+
+                latencies.append(end_time - start_time)
+
+                predictions = torch.argmax(outputs.logits, dim=-1)
+                all_predictions.append(predictions.cpu().item())
+                all_labels.append(labels.cpu().item())
+
+                sample_count += 1
+
+        # Calculate metrics
+        predictions_array = np.array(all_predictions)
+        labels_array = np.array(all_labels)
+        calculator = MetricsCalculator(num_classes=len(set(all_labels)))
+        computed_metrics = calculator.compute_metrics(predictions_array, labels_array)
+
+        # Calculate performance metrics
+        latencies = np.array(latencies)
+        mean_latency = np.mean(latencies)
+        # Use length of predictions as dataset size since test_dataset may not have __len__
+        dataset_size = len(all_predictions)
+        throughput = dataset_size / sum(latencies)
+
+        # Build result
+        result = {
+            "model_name": model_name,
+            "dataset": dataset_name,
+            "timestamp": time.time(),
+        }
+
+        # Add requested metrics
+        for metric in metrics:
+            if metric in computed_metrics:
+                result[f"metric_{metric}"] = computed_metrics[metric]
+
+        result["latency_mean_ms"] = mean_latency * 1000
+        result["throughput_samples_per_sec"] = throughput
+
+        logger.info(f"Evaluation completed for {model_name} on {dataset_name}")
+        return result
+
+    def _find_checkpoint_path(self, model_name: str, dataset_name: str) -> Optional[Path]:
+        """
+        Find checkpoint path for a model and dataset.
+
+        Args:
+            model_name: Model name
+            dataset_name: Dataset name
+
+        Returns:
+            Path: Checkpoint directory path or None if not found
+        """
+        from pathlib import Path
+
+        # Look for checkpoint in experiments/checkpoints
+        checkpoints_dir = Path("experiments/checkpoints")
+
+        # Try different naming patterns
+        possible_names = [
+            f"{model_name}_{dataset_name}",
+            f"{model_name}",
+        ]
+
+        for name in possible_names:
+            checkpoint_path = checkpoints_dir / name
+            if checkpoint_path.exists() and (checkpoint_path / "final").exists():
+                return checkpoint_path
+
+        return None
 
     def evaluate_model(
         self,

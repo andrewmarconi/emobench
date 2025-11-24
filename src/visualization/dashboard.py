@@ -32,6 +32,23 @@ class Dashboard:
         >>> dashboard.run()
     """
 
+    # Metric definitions for user education
+    METRIC_DEFINITIONS = {
+        "accuracy": "Fraction of predictions that are correct. Higher values (closer to 1.0) are better.",
+        "f1": "Harmonic mean of precision and recall. Balances false positives and false negatives. Higher values (closer to 1.0) are better.",
+        "precision": "Fraction of positive predictions that are actually correct. Higher values (closer to 1.0) are better.",
+        "recall": "Fraction of actual positives that are correctly identified. Higher values (closer to 1.0) are better.",
+        "latency_mean_ms": "Average time (in milliseconds) to process one sample. Lower values are better (faster).",
+        "throughput_samples_per_sec": "Number of samples processed per second. Higher values are better (more efficient).",
+        "latency_std_ms": "Standard deviation of latency. Lower values indicate more consistent performance.",
+        "memory_usage_mb": "Memory used by the model during inference (in MB). Lower values are better.",
+        "model_size_mb": "Size of the model file on disk (in MB). Lower values are better for deployment.",
+        "inference_time_ms": "Time taken for model inference (excluding preprocessing). Lower values are better.",
+        "mcc": "Matthews Correlation Coefficient. Measures quality of binary classifications. Range: -1 to +1, higher is better.",
+        "auc": "Area Under the ROC Curve. Measures ability to distinguish between classes. Higher values (closer to 1.0) are better.",
+        "loss": "Model's loss function value. Lower values indicate better fit to the data.",
+    }
+
     def __init__(self, results_dir: Optional[str] = None, port: Optional[int] = None):
         """
         Initialize dashboard.
@@ -85,6 +102,32 @@ class Dashboard:
 
         st.title("🤖 EmoBench Dashboard")
         st.markdown("Interactive model comparison and analysis dashboard")
+
+        # Add help section
+        with st.expander("📚 Help & Metric Definitions"):
+            st.markdown("""
+            ### Understanding the Metrics
+
+            **Performance Metrics:**
+            - **Accuracy**: Fraction of predictions that are correct (higher is better)
+            - **F1 Score**: Harmonic mean of precision and recall, balances false positives and negatives (higher is better)
+            - **Precision**: Fraction of positive predictions that are actually correct (higher is better)
+            - **Recall**: Fraction of actual positives that are correctly identified (higher is better)
+
+            **Speed Metrics:**
+            - **Latency (ms)**: Average time to process one sample (lower is better)
+            - **Throughput**: Number of samples processed per second (higher is better)
+
+            **Model Characteristics:**
+            - **Model Size**: File size on disk (lower is better for deployment)
+            - **Memory Usage**: RAM used during inference (lower is better)
+
+            ### How to Use This Dashboard
+            1. **Filter** models and datasets in the sidebar
+            2. **Select metrics** to compare
+            3. **Explore** different visualization types
+            4. **Export** results for further analysis
+            """)
 
         # Load data
         if not self.load_data():
@@ -148,8 +191,16 @@ class Dashboard:
             "Select Metrics",
             options=available_metrics,
             default=available_metrics[:4] if available_metrics else [],  # First 4 metrics or empty
-            help="Select metrics to display",
+            help="Select metrics to display and compare models",
         )
+
+        # Show metric definitions
+        if available_metrics:
+            with st.sidebar.expander("📚 Metric Definitions"):
+                st.markdown("**Click on metrics to learn what they mean:**")
+                for metric in available_metrics:
+                    definition = self.METRIC_DEFINITIONS.get(metric, "No definition available.")
+                    st.markdown(f"**{metric.replace('_', ' ').title()}:** {definition}")
 
         # Store filters in session state
         st.session_state.selected_models = selected_models
@@ -157,13 +208,13 @@ class Dashboard:
         st.session_state.selected_metrics = selected_metrics
 
         # Apply filters
-        filtered_df = self.results_df.copy()
+        filtered_df = pd.DataFrame(self.results_df)
 
-        if selected_models and hasattr(filtered_df, "isin"):
-            filtered_df = filtered_df[filtered_df["model_name"].isin(list(selected_models))]
+        if selected_models:
+            filtered_df = filtered_df[filtered_df["model_name"].isin(selected_models)]  # type: ignore
 
-        if selected_datasets and hasattr(filtered_df, "isin"):
-            filtered_df = filtered_df[filtered_df["dataset"].isin(list(selected_datasets))]
+        if selected_datasets:
+            filtered_df = filtered_df[filtered_df["dataset"].isin(selected_datasets)]  # type: ignore
 
         st.session_state.filtered_df = filtered_df
 
@@ -260,6 +311,12 @@ class Dashboard:
 
         # Additional info in expander
         with st.expander("Details"):
+            # Show metric definition
+            definition = self.METRIC_DEFINITIONS.get(metric, "No definition available.")
+            st.markdown(f"**Definition:** {definition}")
+
+            st.markdown("---")
+
             col1, col2 = st.columns(2)
             with col1:
                 st.write(f"**Max:** {max_val:.4f}")
@@ -290,7 +347,16 @@ class Dashboard:
                 "Heatmap (Correlation)",
             ],
             index=0,
+            help="Choose how to visualize your model performance metrics",
         )
+
+        # Show selected metrics definitions
+        if selected_metrics:
+            with st.expander("📊 Selected Metrics Info"):
+                st.markdown("**Definitions for selected metrics:**")
+                for metric in selected_metrics:
+                    definition = self.METRIC_DEFINITIONS.get(metric, "No definition available.")
+                    st.markdown(f"• **{metric.replace('_', ' ').title()}:** {definition}")
 
         # Generate visualization based on selection
         if "Scatter Plot" in viz_type:
@@ -457,6 +523,11 @@ class Dashboard:
     def _render_detailed_results(self) -> None:
         """Render detailed results table."""
         st.header("📋 Detailed Results Table")
+
+        st.markdown("""
+        View individual benchmark results for each model. Use the sorting and filtering options to explore the data.
+        All metrics are computed on the test dataset.
+        """)
 
         filtered_df = st.session_state.get("filtered_df", self.results_df)
 
