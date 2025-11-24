@@ -182,6 +182,18 @@ def train_model(
         # Get the tokenizer from the loader
         tokenizer = loader.tokenizer
 
+        # Ensure tokenizer has pad_token for batching (important for decoder-only models)
+        logger.info(f"Tokenizer pad_token before: {tokenizer.pad_token}")
+        logger.info(f"Tokenizer eos_token: {tokenizer.eos_token}")
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+            logger.info(
+                f"Set pad_token to eos_token ({tokenizer.pad_token}) and pad_token_id ({tokenizer.pad_token_id}) for batching"
+            )
+        else:
+            logger.info(f"Tokenizer already has pad_token: {tokenizer.pad_token}")
+
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
         raise
@@ -189,13 +201,14 @@ def train_model(
     # Load model (with HF_TOKEN support for gated models)
     try:
         import os
+
         hf_token = os.environ.get("HF_TOKEN")
 
         model = AutoModelForSequenceClassification.from_pretrained(
             full_model_name,
             num_labels=2,  # Binary classification for sentiment
             token=hf_token,
-            trust_remote_code=True
+            trust_remote_code=True,
         )
 
         model = model.to(device_obj)
@@ -227,12 +240,23 @@ def train_model(
 
     # Get recommended batch size from model registry
     batch_size = registry.get_recommended_batch_size(model_name, device_obj)
+
+    # For decoder-only models, ensure batch_size works with padding
+    model_config = registry.get_model_config(model_name)
+    if model_config.get("architecture") == "decoder-only":
+        # Temporarily reduce batch size for decoder models if needed
+        if batch_size > 1:
+            batch_size = 1
+            logger.info("Reduced batch size to 1 for decoder-only model to avoid padding issues")
+
     logger.info(f"Using batch size: {batch_size} (recommended for {device_str})")
 
     # Calculate gradient accumulation to maintain effective batch size
     target_effective_batch_size = 16
     gradient_accumulation_steps = max(1, target_effective_batch_size // batch_size)
-    logger.info(f"Gradient accumulation steps: {gradient_accumulation_steps} (effective batch size: {batch_size * gradient_accumulation_steps})")
+    logger.info(
+        f"Gradient accumulation steps: {gradient_accumulation_steps} (effective batch size: {batch_size * gradient_accumulation_steps})"
+    )
 
     # Enable gradient checkpointing for large models on MPS to save memory
     use_gradient_checkpointing = False
@@ -243,6 +267,11 @@ def train_model(
                 use_gradient_checkpointing = True
                 model.gradient_checkpointing_enable()
                 logger.info("✓ Enabled gradient checkpointing for memory efficiency")
+
+    # Data collator (datasets are already padded during tokenization)
+    from transformers import default_data_collator
+
+    data_collator = default_data_collator
 
     # Training arguments
     training_args = TrainingArguments(
@@ -269,9 +298,8 @@ def train_model(
         dataloader_pin_memory=(device_str == "cuda"),  # Pin memory only on CUDA
     )
 
-    # Data collator (datasets are already padded, so use default collator)
-    from transformers import default_data_collator
-    data_collator = default_data_collator
+    # Data collator with proper padding for variable-length sequences
+    # (important for decoder-only models that may not have padding tokens)
 
     # Custom compute metrics function
     def compute_metrics(eval_pred):
@@ -378,9 +406,9 @@ def train_all_models(
     all_results = {}
 
     for model in model_names:
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"Training model: {model}")
-        logger.info(f"{'='*60}\n")
+        logger.info(f"{'=' * 60}\n")
 
         model_results = []
 
@@ -432,9 +460,9 @@ def train_all_models(
     with open(results_file, "w") as f:
         json.dump(all_results, f, indent=2)
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"All training completed!")
     logger.info(f"Results saved to: {results_file}")
-    logger.info(f"{'='*60}\n")
+    logger.info(f"{'=' * 60}\n")
 
     return all_results
