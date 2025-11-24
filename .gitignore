@@ -47,10 +47,15 @@ mlruns/
 .DS_Store
 Thumbs.db
 
-# Model cache
-models/
+# Model weights cache (NOT src/models/ which is source code)
+# HuggingFace models are cached in ~/.cache/huggingface/ by default
+# This ignores local model weights if manually downloaded
+/models/
 *.bin
 *.safetensors
+*.gguf
+*.pth
+*.pt
 
 # Logs
 *.log

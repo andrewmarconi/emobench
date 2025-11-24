@@ -251,7 +251,7 @@ uv run emobench train --verbose
    uv run emobench train --model BERT-tiny --dataset imdb --device=mps
    ```
 
-2. **Run first benchmark:** Ultra-fast set (1 hour)
+2. **Run first training:** Ultra-fast set (1 hour)
    ```bash
    uv run emobench train-all --dataset amazon --device=mps \
      --models BERT-tiny BERT-mini BERT-small ELECTRA-small MiniLM-L12
