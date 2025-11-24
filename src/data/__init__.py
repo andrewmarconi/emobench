@@ -1,5 +1,5 @@
 """
-Data loading and preprocessing module for SentiCompare.
+Data loading and preprocessing module for EmoBench.
 
 This module provides utilities for:
 - Loading sentiment analysis datasets from HuggingFace and KaggleHub

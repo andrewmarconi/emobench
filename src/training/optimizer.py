@@ -1,5 +1,5 @@
 """
-Optimizer configuration for SentiCompare.
+Optimizer configuration for EmoBench.
 
 Provides optimizer and scheduler configurations optimized for LoRA fine-tuning.
 """

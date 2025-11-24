@@ -1,5 +1,5 @@
 """
-Streamlit dashboard for SentiCompare model comparison.
+Streamlit dashboard for EmoBench model comparison.
 
 Interactive web interface for visualizing and comparing model performance
 across multiple metrics with filtering, sorting, and export capabilities.
@@ -77,13 +77,13 @@ class Dashboard:
     def run(self) -> None:
         """Run the Streamlit dashboard."""
         st.set_page_config(
-            page_title="SentiCompare Dashboard",
+            page_title="EmoBench Dashboard",
             page_icon="🤖",
             layout="wide",
             initial_sidebar_state="expanded",
         )
 
-        st.title("🤖 SentiCompare Dashboard")
+        st.title("🤖 EmoBench Dashboard")
         st.markdown("Interactive model comparison and analysis dashboard")
 
         # Load data
@@ -546,7 +546,7 @@ class Dashboard:
         st.download_button(
             label="📥 Download JSON Summary",
             data=json_str,
-            file_name="senticompare_summary.json",
+            file_name="emobench_summary.json",
             mime="application/json",
         )
 
@@ -556,7 +556,7 @@ class Dashboard:
         st.download_button(
             label="📥 Download CSV Data",
             data=csv,
-            file_name="senticompare_data.csv",
+            file_name="emobench_data.csv",
             mime="text/csv",
         )
 
@@ -564,7 +564,7 @@ class Dashboard:
         """Export Markdown report."""
         # Generate markdown
         lines = [
-            "# SentiCompare Results Report",
+            "# EmoBench Results Report",
             f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
             "## Overview",
@@ -594,7 +594,7 @@ class Dashboard:
         st.download_button(
             label="📥 Download Markdown Report",
             data=markdown,
-            file_name="senticompare_report.md",
+            file_name="emobench_report.md",
             mime="text/markdown",
         )
 
@@ -614,7 +614,7 @@ def run_dashboard(results_dir: Optional[str] = None, port: Optional[int] = None)
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run SentiCompare Dashboard")
+    parser = argparse.ArgumentParser(description="Run EmoBench Dashboard")
     parser.add_argument("--results-dir", type=str, help="Directory containing benchmark results")
     parser.add_argument("--port", type=int, default=8501, help="Port to run dashboard on")
 

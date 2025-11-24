@@ -1,5 +1,5 @@
 """
-Training module for SentiCompare.
+Training module for EmoBench.
 """
 
 import logging
@@ -12,9 +12,9 @@ from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
 logger = logging.getLogger(__name__)
 
 
-class SentiCompareTrainer:
+class EmoBenchTrainer:
     """
-    Custom trainer for SentiCompare with MLflow logging.
+    Custom trainer for EmoBench with MLflow logging.
     """
 
     def __init__(
@@ -107,7 +107,7 @@ class SentiCompareTrainer:
             model_results = []
             for dataset in datasets:
                 # Create new trainer for each model-dataset combination
-                trainer = SentiCompareTrainer(model, dataset, str(self.config_dir), self.device)
+                trainer = EmoBenchTrainer(model, dataset, str(self.config_dir), self.device)
                 result = trainer.train()
                 result["dataset"] = dataset
                 model_results.append(result)
@@ -136,7 +136,7 @@ def train_model(
         config_dir: Configuration directory
 
     Returns:
-        SentiCompareTrainer: Trained trainer object with model and tokenizer
+        EmoBenchTrainer: Trained trainer object with model and tokenizer
     """
     from transformers import (
         AutoModelForSequenceClassification,
@@ -171,18 +171,22 @@ def train_model(
 
     logger.info(f"Training {model_name} on {dataset_name} using device: {device_str}")
 
-    # Load dataset
+    # Load dataset (already tokenized by the loader)
     try:
         loader = SentimentDataLoader(dataset_name, full_model_name)
         train_dataset, val_dataset, test_dataset = loader.load_and_prepare()
         logger.info(
             f"Loaded dataset: {len(train_dataset)} train, {len(val_dataset)} val, {len(test_dataset)} test samples"
         )
+
+        # Get the tokenizer from the loader
+        tokenizer = loader.tokenizer
+
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
         raise
 
-    # Load model and tokenizer (with HF_TOKEN support for gated models)
+    # Load model (with HF_TOKEN support for gated models)
     try:
         import os
         hf_token = os.environ.get("HF_TOKEN")
@@ -193,64 +197,81 @@ def train_model(
             token=hf_token,
             trust_remote_code=True
         )
-        tokenizer = AutoTokenizer.from_pretrained(
-            full_model_name,
-            token=hf_token,
-            trust_remote_code=True
-        )
-
-        # Add pad token if missing
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
 
         model = model.to(device_obj)
-        logger.info(f"Loaded model and tokenizer: {full_model_name}")
+        logger.info(f"Loaded model: {full_model_name}")
     except Exception as e:
-        logger.error(f"Failed to load model/tokenizer: {e}")
+        logger.error(f"Failed to load model: {e}")
         raise
 
-    # Tokenize datasets
-    def tokenize_function(examples):
-        return tokenizer(
-            examples["text"],
-            padding="max_length",
-            truncation=True,
-            max_length=512,
-        )
+    # Datasets are already tokenized by the loader, just set format for PyTorch
+    logger.info("Preparing datasets for PyTorch...")
+    train_dataset.set_format("torch")
+    val_dataset.set_format("torch")
 
-    logger.info("Tokenizing datasets...")
-    tokenized_train = train_dataset.map(tokenize_function, batched=True)
-    tokenized_val = val_dataset.map(tokenize_function, batched=True)
+    # Check memory requirements and warn if potentially problematic
+    model_size = registry.get_model_size(model_name)
+    memory_req = registry.get_memory_requirements(model_name, device_str)
+    logger.info(f"Model size: {model_size}, Memory requirement: {memory_req}")
 
-    # Remove original text columns and rename labels
-    tokenized_train = tokenized_train.remove_columns(["text"])
-    tokenized_val = tokenized_val.remove_columns(["text"])
+    if device_str == "mps" and "B" in model_size:
+        size_b = float(model_size.replace("B", ""))
+        if size_b >= 3.0:
+            logger.warning(
+                f"⚠️  {model_name} ({model_size}) may require significant memory on MPS. "
+                f"If you encounter OOM errors, consider:\n"
+                f"  1. Closing other applications\n"
+                f"  2. Setting PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0\n"
+                f"  3. Skipping this model with --models flag"
+            )
 
-    # Set format for PyTorch
-    tokenized_train.set_format("torch")
-    tokenized_val.set_format("torch")
+    # Get recommended batch size from model registry
+    batch_size = registry.get_recommended_batch_size(model_name, device_obj)
+    logger.info(f"Using batch size: {batch_size} (recommended for {device_str})")
+
+    # Calculate gradient accumulation to maintain effective batch size
+    target_effective_batch_size = 16
+    gradient_accumulation_steps = max(1, target_effective_batch_size // batch_size)
+    logger.info(f"Gradient accumulation steps: {gradient_accumulation_steps} (effective batch size: {batch_size * gradient_accumulation_steps})")
+
+    # Enable gradient checkpointing for large models on MPS to save memory
+    use_gradient_checkpointing = False
+    if device_str == "mps":
+        if "B" in model_size:  # Models in billions of parameters
+            size_b = float(model_size.replace("B", ""))
+            if size_b >= 1.0:  # 1B+ parameters
+                use_gradient_checkpointing = True
+                model.gradient_checkpointing_enable()
+                logger.info("✓ Enabled gradient checkpointing for memory efficiency")
 
     # Training arguments
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=1,  # Reduced for testing
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16,
-        warmup_steps=50,  # Reduced for testing
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        warmup_steps=50,
         weight_decay=0.01,
         logging_dir=f"{output_dir}/logs",
-        logging_steps=10,  # More frequent logging for testing
+        logging_steps=10,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         greater_is_better=True,
         save_total_limit=2,
-        report_to=[],  # Disable wandb/tensorboard for now
+        report_to=[],
+        gradient_checkpointing=use_gradient_checkpointing,
+        # Device-specific settings
+        fp16=(device_str == "cuda"),  # Only enable fp16 on CUDA
+        bf16=False,  # Disable bf16 for now
+        dataloader_pin_memory=(device_str == "cuda"),  # Pin memory only on CUDA
     )
 
-    # Data collator
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    # Data collator (datasets are already padded, so use default collator)
+    from transformers import default_data_collator
+    data_collator = default_data_collator
 
     # Custom compute metrics function
     def compute_metrics(eval_pred):
@@ -270,8 +291,8 @@ def train_model(
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_train,
-        eval_dataset=tokenized_val,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
     )
@@ -338,21 +359,82 @@ def train_all_models(
     Returns:
         Dict: Training results for all models
     """
-    # Use a dummy model name for the trainer since we'll override
-    trainer = SentiCompareTrainer("dummy", "dummy", config_dir, device)
+    from src.models.model_registry import ModelRegistry
 
-    # Convert single dataset to list
-    datasets = [dataset_name] if dataset_name else None
+    # Get default models if not specified
+    if model_names is None:
+        registry = ModelRegistry()
+        model_names = registry.list_models()
+        logger.info(f"Training all {len(model_names)} models from registry")
 
-    results = trainer.train_all(models=model_names, datasets=datasets)
+    # Get default datasets if not specified
+    if dataset_name is None:
+        datasets = ["imdb", "sst2", "amazon", "yelp"]
+        logger.info(f"No dataset specified, will train on all datasets: {datasets}")
+    else:
+        datasets = [dataset_name]
+        logger.info(f"Training on dataset: {dataset_name}")
 
-    # Save results
+    all_results = {}
+
+    for model in model_names:
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Training model: {model}")
+        logger.info(f"{'='*60}\n")
+
+        model_results = []
+
+        for dataset in datasets:
+            logger.info(f"\nTraining {model} on {dataset}...")
+
+            # Create output directory for this model-dataset combination
+            output_dir = Path(f"experiments/checkpoints/{model}_{dataset}")
+
+            try:
+                # Train the model using the real implementation
+                trainer = train_model(
+                    model_name=model,
+                    dataset_name=dataset,
+                    output_dir=str(output_dir),
+                    device=device,
+                    config_dir=config_dir,
+                )
+
+                # Collect results
+                result = {
+                    "model_name": model,
+                    "dataset": dataset,
+                    "status": "completed",
+                    "checkpoint_dir": str(output_dir),
+                }
+                model_results.append(result)
+                logger.info(f"✓ Completed training {model} on {dataset}")
+
+            except Exception as e:
+                logger.error(f"✗ Failed to train {model} on {dataset}: {e}")
+                result = {
+                    "model_name": model,
+                    "dataset": dataset,
+                    "status": "failed",
+                    "error": str(e),
+                }
+                model_results.append(result)
+
+        all_results[model] = model_results
+
+    # Save aggregated results
     output_dir = Path("experiments/checkpoints")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     import json
 
-    with open(output_dir / "all_training_results.json", "w") as f:
-        json.dump(results, f, indent=2)
+    results_file = output_dir / "all_training_results.json"
+    with open(results_file, "w") as f:
+        json.dump(all_results, f, indent=2)
 
-    return results
+    logger.info(f"\n{'='*60}")
+    logger.info(f"All training completed!")
+    logger.info(f"Results saved to: {results_file}")
+    logger.info(f"{'='*60}\n")
+
+    return all_results

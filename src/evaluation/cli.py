@@ -1,5 +1,5 @@
 """
-Evaluation CLI commands for SentiCompare.
+Evaluation CLI commands for EmoBench.
 """
 
 import logging

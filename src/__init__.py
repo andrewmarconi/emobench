@@ -1,5 +1,5 @@
 """
-SentiCompare - Multi-LLM Sentiment Analysis Benchmark Framework
+EmoBench - Multi-LLM Sentiment Analysis Benchmark Framework
 
 A comprehensive framework for fine-tuning, evaluating, and comparing
 multiple small language models (SLMs) for sentiment analysis tasks.
@@ -12,7 +12,7 @@ This package provides tools for:
 - Interactive visualization and reporting
 
 Example:
-    >>> from senticompare import SentimentDataLoader, SentiCompareTrainer
+    >>> from emobench import SentimentDataLoader, EmoBenchTrainer
     >>> loader = SentimentDataLoader("imdb", "distilbert-base-uncased")
-    >>> trainer = SentiCompareTrainer("distilbert-base-uncased", "imdb")
+    >>> trainer = EmoBenchTrainer("distilbert-base-uncased", "imdb")
 """

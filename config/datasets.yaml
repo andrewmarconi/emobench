@@ -1,4 +1,4 @@
-# Dataset configurations for SentiCompare benchmark
+# Dataset configurations for EmoBench benchmark
 
 datasets:
   # Standard sentiment analysis datasets

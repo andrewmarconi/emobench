@@ -1,5 +1,5 @@
 """
-Visualization CLI commands for SentiCompare.
+Visualization CLI commands for EmoBench.
 """
 
 import logging

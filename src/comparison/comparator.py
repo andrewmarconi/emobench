@@ -1,5 +1,5 @@
 """
-Model comparison utilities for SentiCompare.
+Model comparison utilities for EmoBench.
 
 Provides tools for comparing multiple models across different metrics and datasets.
 """

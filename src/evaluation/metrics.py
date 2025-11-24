@@ -1,5 +1,5 @@
 """
-Evaluation metrics for SentiCompare.
+Evaluation metrics for EmoBench.
 
 Comprehensive metrics computation for sentiment analysis models including:
 - Classification metrics (accuracy, F1, precision, recall)

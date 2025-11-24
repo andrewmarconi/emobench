@@ -1,4 +1,4 @@
-# Model configurations for SentiCompare benchmark
+# Model configurations for EmoBench benchmark
 # Each model has its own LoRA hyperparameters and target modules
 
 models:
@@ -105,9 +105,9 @@ models:
       dropout: 0.05
       target_modules: ["q_lin", "v_lin"]  # DistilBERT uses different naming
     recommended_batch_size:
-      cuda: 16
-      mps: 8
-      cpu: 4
+      cuda: 32
+      mps: 16
+      cpu: 8
     memory_requirements:
       cuda_4bit: "0.5GB"
       mps_fp32: "2GB"
@@ -123,13 +123,213 @@ models:
       dropout: 0.05
       target_modules: ["query", "value"]  # RoBERTa uses different naming
     recommended_batch_size:
-      cuda: 16
-      mps: 8
-      cpu: 4
+      cuda: 32
+      mps: 16
+      cpu: 8
     memory_requirements:
       cuda_4bit: "1GB"
       mps_fp32: "3GB"
       cpu: "6GB"
+
+  # Tiny Encoder Models (< 100M) - Optimized for speed
+  - name: "google/bert-base-uncased"
+    alias: "BERT-base"
+    size_params: "110M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 32
+      mps: 16
+      cpu: 8
+    memory_requirements:
+      cuda_4bit: "1GB"
+      mps_fp32: "3GB"
+      cpu: "6GB"
+
+  - name: "distilroberta-base"
+    alias: "DistilRoBERTa"
+    size_params: "82M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 32
+      mps: 16
+      cpu: 8
+    memory_requirements:
+      cuda_4bit: "0.8GB"
+      mps_fp32: "2.5GB"
+      cpu: "5GB"
+
+  - name: "microsoft/deberta-v3-small"
+    alias: "DeBERTa-v3-small"
+    size_params: "86M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query_proj", "value_proj"]
+    recommended_batch_size:
+      cuda: 32
+      mps: 16
+      cpu: 8
+    memory_requirements:
+      cuda_4bit: "0.8GB"
+      mps_fp32: "2.5GB"
+      cpu: "5GB"
+
+  - name: "prajjwal1/bert-tiny"
+    alias: "BERT-tiny"
+    size_params: "4M"
+    architecture: "encoder-only"
+    lora:
+      rank: 4
+      alpha: 8
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 64
+      mps: 32
+      cpu: 16
+    memory_requirements:
+      cuda_4bit: "0.1GB"
+      mps_fp32: "0.5GB"
+      cpu: "1GB"
+
+  - name: "prajjwal1/bert-mini"
+    alias: "BERT-mini"
+    size_params: "11M"
+    architecture: "encoder-only"
+    lora:
+      rank: 4
+      alpha: 8
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 64
+      mps: 32
+      cpu: 16
+    memory_requirements:
+      cuda_4bit: "0.2GB"
+      mps_fp32: "0.8GB"
+      cpu: "2GB"
+
+  - name: "prajjwal1/bert-small"
+    alias: "BERT-small"
+    size_params: "29M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 64
+      mps: 32
+      cpu: 16
+    memory_requirements:
+      cuda_4bit: "0.3GB"
+      mps_fp32: "1GB"
+      cpu: "2.5GB"
+
+  - name: "microsoft/MiniLM-L12-H384-uncased"
+    alias: "MiniLM-L12"
+    size_params: "33M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 64
+      mps: 32
+      cpu: 16
+    memory_requirements:
+      cuda_4bit: "0.4GB"
+      mps_fp32: "1.2GB"
+      cpu: "3GB"
+
+  - name: "google/electra-small-discriminator"
+    alias: "ELECTRA-small"
+    size_params: "14M"
+    architecture: "encoder-only"
+    lora:
+      rank: 4
+      alpha: 8
+      dropout: 0.05
+      target_modules: ["query", "value"]
+    recommended_batch_size:
+      cuda: 64
+      mps: 32
+      cpu: 16
+    memory_requirements:
+      cuda_4bit: "0.2GB"
+      mps_fp32: "0.8GB"
+      cpu: "2GB"
+
+  # Tiny Decoder Models (100M-300M) - Fast but capable
+  - name: "openai-community/gpt2"
+    alias: "GPT2-small"
+    size_params: "124M"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["c_attn"]
+    recommended_batch_size:
+      cuda: 32
+      mps: 16
+      cpu: 8
+    memory_requirements:
+      cuda_4bit: "1GB"
+      mps_fp32: "3GB"
+      cpu: "6GB"
+
+  - name: "EleutherAI/pythia-70m"
+    alias: "Pythia-70m"
+    size_params: "70M"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query_key_value"]
+    recommended_batch_size:
+      cuda: 32
+      mps: 16
+      cpu: 8
+    memory_requirements:
+      cuda_4bit: "0.6GB"
+      mps_fp32: "2GB"
+      cpu: "4GB"
+
+  - name: "EleutherAI/pythia-160m"
+    alias: "Pythia-160m"
+    size_params: "160M"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query_key_value"]
+    recommended_batch_size:
+      cuda: 32
+      mps: 16
+      cpu: 8
+    memory_requirements:
+      cuda_4bit: "1.2GB"
+      mps_fp32: "4GB"
+      cpu: "8GB"
 
 # Global LoRA defaults (used if model-specific config not provided)
 lora_defaults:

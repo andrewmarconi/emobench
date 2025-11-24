@@ -1,5 +1,5 @@
 """
-Device detection and management utilities for SentiCompare.
+Device detection and management utilities for EmoBench.
 
 Handles device selection (CUDA, MPS, CPU) and provides device-specific
 synchronization and memory tracking utilities.

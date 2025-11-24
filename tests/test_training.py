@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from transformers import TrainingArguments
 
-from src.training.trainer import SentiCompareTrainer
+from src.training.trainer import EmoBenchTrainer
 from src.training.optimizer import (
     get_optimizer,
     create_scheduler,
@@ -24,8 +24,8 @@ from src.training.callbacks import (
 )
 
 
-class TestSentiCompareTrainer:
-    """Tests for SentiCompareTrainer class."""
+class TestEmoBenchTrainer:
+    """Tests for EmoBenchTrainer class."""
 
     @pytest.fixture
     def mock_model(self):
@@ -51,7 +51,7 @@ class TestSentiCompareTrainer:
 
     def test_trainer_initialization(self, mock_model, mock_tokenizer, mock_dataset):
         """Test trainer initialization."""
-        trainer = SentiCompareTrainer(
+        trainer = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,
@@ -67,7 +67,7 @@ class TestSentiCompareTrainer:
 
     def test_get_training_args(self, mock_model, mock_tokenizer, mock_dataset):
         """Test training arguments generation."""
-        trainer = SentiCompareTrainer(
+        trainer = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,
@@ -84,7 +84,7 @@ class TestSentiCompareTrainer:
 
     def test_device_auto_detection(self, mock_model, mock_tokenizer, mock_dataset):
         """Test automatic device detection."""
-        trainer = SentiCompareTrainer(
+        trainer = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,
@@ -98,7 +98,7 @@ class TestSentiCompareTrainer:
     def test_device_specific_batch_size(self, mock_model, mock_tokenizer, mock_dataset):
         """Test device-specific batch size selection."""
         # Test CPU
-        trainer_cpu = SentiCompareTrainer(
+        trainer_cpu = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,
@@ -117,7 +117,7 @@ class TestSentiCompareTrainer:
         labels = torch.tensor([1, 0, 1, 0])
 
         eval_pred = (predictions.numpy(), labels.numpy())
-        metrics = SentiCompareTrainer.compute_metrics(eval_pred)
+        metrics = EmoBenchTrainer.compute_metrics(eval_pred)
 
         assert "accuracy" in metrics
         assert "f1" in metrics
@@ -130,7 +130,7 @@ class TestSentiCompareTrainer:
 
     def test_save_model(self, mock_model, mock_tokenizer, mock_dataset, tmp_path):
         """Test model saving."""
-        trainer = SentiCompareTrainer(
+        trainer = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,
@@ -388,7 +388,7 @@ logging:
         mock_dataset.__len__ = Mock(return_value=100)
 
         # Create trainer
-        trainer = SentiCompareTrainer(
+        trainer = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,
@@ -413,7 +413,7 @@ logging:
         mock_dataset.__len__ = Mock(return_value=100)
 
         # This should not raise an error even if MLflow is not installed
-        trainer = SentiCompareTrainer(
+        trainer = EmoBenchTrainer(
             model=mock_model,
             tokenizer=mock_tokenizer,
             train_dataset=mock_dataset,

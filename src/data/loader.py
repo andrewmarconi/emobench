@@ -1,5 +1,5 @@
 """
-Data loading utilities for SentiCompare.
+Data loading utilities for EmoBench.
 
 Handles loading sentiment analysis datasets from various sources
 (HuggingFace Hub, KaggleHub) and prepares them for training.
@@ -103,7 +103,7 @@ class SentimentDataLoader:
         # For testing, use smaller dataset sizes
         import os
 
-        if os.environ.get("SENTICOMPARE_TEST_MODE"):
+        if os.environ.get("EMOBENCH_TEST_MODE"):
             self.dataset_config["max_train_samples"] = 100
             self.dataset_config["max_val_samples"] = 50
             self.dataset_config["max_test_samples"] = 50
@@ -346,6 +346,19 @@ class SentimentDataLoader:
             batched=True,
             desc="Tokenizing test data",
         )
+
+        # Remove original text columns (keep only tokenized data)
+        text_column = self.dataset_config.get("text_column", "text")
+        label_column = self.dataset_config.get("label_column", "label")
+
+        # Get all column names
+        cols_to_remove = [col for col in train_data.column_names if col not in ["input_ids", "attention_mask", "labels"]]
+
+        if cols_to_remove:
+            logger.info(f"Removing original columns: {cols_to_remove}")
+            train_data = train_data.remove_columns(cols_to_remove)
+            val_data = val_data.remove_columns(cols_to_remove)
+            test_data = test_data.remove_columns(cols_to_remove)
 
         return train_data, val_data, test_data
 

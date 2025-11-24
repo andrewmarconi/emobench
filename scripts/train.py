@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Training script for SentiCompare models.
+Training script for EmoBench models.
 
 This script provides a command-line interface for training sentiment analysis
 models with LoRA fine-tuning.
@@ -19,7 +19,7 @@ from pathlib import Path
 from src.data.loader import SentimentDataLoader, list_available_datasets
 from src.models.lora_config import prepare_model
 from src.models.model_registry import ModelRegistry, list_all_models
-from src.training.trainer import SentiCompareTrainer
+from src.training.trainer import EmoBenchTrainer
 from src.utils.device import get_device, print_device_info
 
 # Setup logging
@@ -75,7 +75,7 @@ def parse_args():
         "--experiment-name",
         type=str,
         default=None,
-        help="MLflow experiment name (default: senticompare)",
+        help="MLflow experiment name (default: emobench)",
     )
     parser.add_argument(
         "--list-models",
@@ -158,7 +158,7 @@ def main():
 
     # Print header
     print("\n" + "=" * 60)
-    print("SentiCompare - Model Training".center(60))
+    print("EmoBench - Model Training".center(60))
     print("=" * 60)
     print(f"Model:       {args.model}")
     print(f"Dataset:     {args.dataset}")
@@ -223,7 +223,7 @@ def main():
 
     # Create trainer
     logger.info("Initializing trainer...")
-    trainer = SentiCompareTrainer(
+    trainer = EmoBenchTrainer(
         model=model,
         tokenizer=loader.tokenizer,
         train_dataset=train_data,

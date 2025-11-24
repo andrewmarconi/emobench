@@ -1,5 +1,5 @@
 """
-Utility modules for SentiCompare.
+Utility modules for EmoBench.
 
 This package contains shared utilities used across the framework:
 - Device detection and management

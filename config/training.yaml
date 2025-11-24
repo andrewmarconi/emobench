@@ -1,4 +1,4 @@
-# Training configuration for SentiCompare benchmark
+# Training configuration for EmoBench benchmark
 
 # Output directories
 output:

@@ -1,5 +1,5 @@
 """
-Ranking system for SentiCompare models.
+Ranking system for EmoBench models.
 
 Provides multiple ranking strategies based on different criteria:
 - Performance-based (metrics)

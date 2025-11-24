@@ -1,5 +1,5 @@
 """
-SentiCompare CLI - Multi-LLM Sentiment Analysis Benchmark Framework
+EmoBench CLI - Multi-LLM Sentiment Analysis Benchmark Framework
 
 Command-line interface for training, evaluating, and comparing sentiment analysis models.
 """
@@ -20,16 +20,16 @@ logger = logging.getLogger(__name__)
 def create_parser() -> argparse.ArgumentParser:
     """Create the main argument parser."""
     parser = argparse.ArgumentParser(
-        description="SentiCompare - Multi-LLM Sentiment Analysis Benchmark Framework",
+        description="EmoBench - Multi-LLM Sentiment Analysis Benchmark Framework",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  senticompare train --model DistilBERT-base --dataset imdb
-  senticompare train-all --dataset imdb
-  senticompare evaluate --model DistilBERT-base --dataset imdb
-  senticompare benchmark --models-dir experiments/checkpoints
-  senticompare dashboard
-  senticompare report --results-dir experiments/results
+  emobench train --model DistilBERT-base --dataset imdb
+  emobench train-all --dataset imdb
+  emobench evaluate --model DistilBERT-base --dataset imdb
+  emobench benchmark --models-dir experiments/checkpoints
+  emobench dashboard
+  emobench report --results-dir experiments/results
         """,
     )
 
@@ -183,7 +183,7 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    logger.info(f"SentiCompare CLI - Command: {args.command}")
+    logger.info(f"EmoBench CLI - Command: {args.command}")
 
     try:
         # Import here to avoid circular imports and allow CLI to work even if modules are incomplete

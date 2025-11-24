@@ -1,5 +1,5 @@
 """
-Main entry point for SentiCompare.
+Main entry point for EmoBench.
 
 This module serves as the entry point when running the package directly.
 It delegates to the CLI interface for all functionality.

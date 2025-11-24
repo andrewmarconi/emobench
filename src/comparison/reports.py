@@ -1,5 +1,5 @@
 """
-Report generation utilities for SentiCompare.
+Report generation utilities for EmoBench.
 
 Generates comprehensive ranking reports in various formats including
 JSON, CSV, markdown, and visual summaries.

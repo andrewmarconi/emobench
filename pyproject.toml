@@ -1,5 +1,5 @@
 [project]
-name = "senticompare"
+name = "emobench"
 version = "0.1.0"
 description = "Multi-LLM Sentiment Analysis Benchmark Framework with LoRA/QLoRA fine-tuning"
 readme = "README.md"
@@ -49,7 +49,7 @@ dev = [
 ]
 
 [project.scripts]
-senticompare = "src.cli:main"
+emobench = "src.cli:main"
 
 [build-system]
 requires = ["hatchling"]

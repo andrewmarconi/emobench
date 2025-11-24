@@ -1,5 +1,5 @@
 """
-Training CLI commands for SentiCompare.
+Training CLI commands for EmoBench.
 """
 
 import logging

@@ -1,5 +1,5 @@
 """
-Text preprocessing utilities for SentiCompare.
+Text preprocessing utilities for EmoBench.
 
 Provides text cleaning, normalization, and optional data augmentation
 for sentiment analysis tasks.

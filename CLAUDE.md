@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**SentiCompare** is a multi-LLM sentiment analysis benchmark framework that fine-tunes, evaluates, and compares small language models (SLMs) using Parameter-Efficient Fine-Tuning (PEFT) techniques (LoRA/QLoRA) with 4-bit quantization. The framework systematically measures both performance metrics (accuracy, F1, precision, recall) and speed metrics (latency, throughput, memory usage) across multiple models.
+**EmoBench** is a multi-LLM sentiment analysis benchmark framework that fine-tunes, evaluates, and compares small language models (SLMs) using Parameter-Efficient Fine-Tuning (PEFT) techniques (LoRA/QLoRA) with 4-bit quantization. The framework systematically measures both performance metrics (accuracy, F1, precision, recall) and speed metrics (latency, throughput, memory usage) across multiple models.
 
 ## Package Management
 
@@ -58,14 +58,25 @@ Data Pipeline → Training Engine → Evaluation Engine → Comparison Module �
 - Enables training on 10GB VRAM GPUs (e.g., RTX 3080) or Apple Silicon with 16GB+ unified memory
 
 #### Model Registry
-Target models for comparison:
-- Phi-3-mini (3.8B) - Microsoft
-- Gemma-2-2B (2B) - Google
-- TinyLlama-1.1B (1.1B)
-- Qwen2.5-1.5B (1.5B) - Alibaba
-- SmolLM2-1.7B (1.7B) - Hugging Face
-- DistilBERT-base (66M) - Baseline
-- RoBERTa-base (125M) - Baseline
+
+The framework supports **18 models** ranging from 4M to 3.8B parameters, optimized for fast benchmarking:
+
+**Ultra-Tiny Models (4M-30M) - Fastest:**
+- BERT-tiny (4M), BERT-mini (11M), ELECTRA-small (14M)
+- BERT-small (29M), MiniLM-L12 (33M)
+
+**Tiny Models (60M-170M) - Production Baselines:**
+- DistilBERT-base (66M), Pythia-70m (70M), DistilRoBERTa (82M)
+- DeBERTa-v3-small (86M), BERT-base (110M), GPT2-small (124M)
+- RoBERTa-base (125M), Pythia-160m (160M), Gemma-2-2B (270M)
+
+**Small LLMs (1B-4B) - Research Quality:**
+- TinyLlama-1.1B (1.1B), Qwen2.5-1.5B (1.5B), SmolLM2-1.7B (1.7B), Phi-3-mini (3.8B)
+
+**Documentation:**
+- Full model guide: `docs/MODEL_CONFIGURATION.md`
+- Quick reference: `docs/QUICK_REFERENCE.md`
+- Configuration: `config/models.yaml`
 
 #### Benchmarking Approach
 - **Performance Metrics**: Accuracy, F1-score, Precision, Recall (via sklearn)
@@ -217,6 +228,40 @@ Configuration is managed via YAML files in `config/`:
 - `training.yaml` - Training hyperparameters (epochs, batch size, learning rate, etc.)
 - `evaluation.yaml` - Metrics to compute, benchmarking parameters
 
+## Recommended Workflows
+
+### Quick Start: Ultra-Fast Benchmark (1 hour)
+For rapid experimentation and CI/CD testing:
+```bash
+uv run emobench train-all --dataset amazon --device=mps \
+  --models BERT-tiny BERT-mini BERT-small ELECTRA-small MiniLM-L12
+```
+- 5 ultra-tiny models (4M-33M parameters)
+- Training time: ~1 hour total
+- Memory: <2GB
+- Best for initial validation
+
+### Production: Encoder Comparison (2-3 hours)
+For comprehensive encoder architecture study:
+```bash
+uv run emobench train-all --dataset amazon --device=mps \
+  --models DistilBERT-base DistilRoBERTa DeBERTa-v3-small BERT-base RoBERTa-base
+```
+- 5 proven production models (66M-125M)
+- Training time: ~2-3 hours
+- Memory: <3GB
+
+### Research: Full Tiny Benchmark (4-5 hours)
+For comprehensive lightweight model comparison:
+```bash
+uv run emobench train-all --dataset amazon --device=mps \
+  --models BERT-tiny BERT-mini BERT-small DistilBERT-base DistilRoBERTa \
+           DeBERTa-v3-small BERT-base RoBERTa-base GPT2-small Pythia-70m
+```
+- 10 models (4M-160M)
+- Training time: ~4-5 hours
+- Memory: <4GB
+
 ## Hardware Considerations
 
 ### CUDA (NVIDIA GPUs)
@@ -226,11 +271,17 @@ Configuration is managed via YAML files in `config/`:
 - 4-bit quantization + LoRA enables training on 10GB VRAM
 
 ### MPS (Apple Silicon)
-- **Minimum**: M1 with 16GB unified memory
-- **Recommended**: M2/M3 Pro/Max with 32GB+ unified memory
+- **Minimum**: M1 with 16GB unified memory (ultra-tiny models only)
+- **Recommended**: M2/M3 Pro/Max with 32GB+ unified memory (all tiny models)
+- **Optimal**: M3 Max with 64GB+ unified memory (all models including LLMs)
 - No 4-bit quantization support (bitsandbytes incompatible)
-- Uses full precision or fp16 with LoRA
+- Uses full precision (FP32) with LoRA
 - Memory pressure managed via unified memory architecture
+- **Automatic optimizations:**
+  - Dynamic batch sizing based on model size
+  - Gradient checkpointing for models ≥1B parameters
+  - Gradient accumulation to maintain effective batch size
+  - Pin memory disabled (not applicable to unified memory)
 
 ### Device-Specific Features
 | Feature | CUDA | MPS | CPU |

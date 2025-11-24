@@ -1,5 +1,5 @@
 """
-Visualization and reporting module for SentiCompare.
+Visualization and reporting module for EmoBench.
 
 This module provides visualization and reporting tools:
 - Interactive Streamlit dashboard

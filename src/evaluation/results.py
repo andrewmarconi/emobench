@@ -1,5 +1,5 @@
 """
-Results aggregation and storage for SentiCompare.
+Results aggregation and storage for EmoBench.
 
 Collects, stores, and analyzes evaluation results from multiple models and datasets.
 """

@@ -1,5 +1,5 @@
 """
-Result aggregation utilities for SentiCompare.
+Result aggregation utilities for EmoBench.
 
 Handles loading, combining, and aggregating benchmark results from multiple models
 and experiments into unified DataFrames for analysis.

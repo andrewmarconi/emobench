@@ -1,5 +1,5 @@
 """
-Training callbacks for SentiCompare.
+Training callbacks for EmoBench.
 
 Custom callbacks for progress tracking, logging, and model checkpointing.
 """

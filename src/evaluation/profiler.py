@@ -1,5 +1,5 @@
 """
-Memory profiling for SentiCompare models.
+Memory profiling for EmoBench models.
 
 Tracks memory usage during training and inference across different devices
 (CUDA, MPS, CPU).

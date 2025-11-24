@@ -1,5 +1,5 @@
 """
-Plot generation utilities for SentiCompare.
+Plot generation utilities for EmoBench.
 
 Provides Plotly-based visualization functions for model comparison
 including scatter plots, radar charts, bar charts, and line plots.

@@ -1,5 +1,5 @@
 """
-Speed benchmarking for SentiCompare models.
+Speed benchmarking for EmoBench models.
 """
 
 import logging

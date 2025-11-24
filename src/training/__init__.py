@@ -1,5 +1,5 @@
 """
-Training module for SentiCompare.
+Training module for EmoBench.
 
 This module provides training utilities for fine-tuning language models:
 - Custom trainer with device-aware configuration
@@ -8,5 +8,5 @@ This module provides training utilities for fine-tuning language models:
 - Multi-GPU and MPS support
 
 Classes:
-    SentiCompareTrainer: Main training class with LoRA support
+    EmoBenchTrainer: Main training class with LoRA support
 """

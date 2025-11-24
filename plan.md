@@ -1,4 +1,4 @@
-# SentiCompare Implementation Plan
+# EmoBench Implementation Plan
 
 ## Project Status
 Currently implemented:
@@ -120,7 +120,7 @@ Currently implemented:
 ### Phase 4: Training Engine (Week 2-3)
 
 #### 4.1 Trainer Implementation (`src/training/trainer.py`)
-- [ ] Implement `SentiCompareTrainer` class
+- [ ] Implement `EmoBenchTrainer` class
   - [ ] Wrap Hugging Face `Trainer` with custom logic
   - [ ] Configure device-aware `TrainingArguments`:
     - CUDA: fp16=True, bf16=False
