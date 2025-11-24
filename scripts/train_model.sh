@@ -103,7 +103,7 @@ def main():
     final_output = f"{output_dir}/final"
     logger.info(f"Saving final model to {final_output}")
     trainer.model.save_pretrained(final_output)
-    trainer.tokenizer.save_pretrained(final_output)
+    trainer.processing_class.save_pretrained(final_output)  # Updated from deprecated trainer.tokenizer
 
     logger.info("Model saved successfully!")
 

@@ -60,7 +60,7 @@ class TestEmoBenchTrainer:
         )
 
         assert trainer.model == mock_model
-        assert trainer.tokenizer == mock_tokenizer
+        assert trainer.processing_class == mock_tokenizer  # Updated from deprecated trainer.tokenizer
         assert trainer.train_dataset == mock_dataset
         assert trainer.eval_dataset == mock_dataset
         assert trainer.device.type == "cpu"

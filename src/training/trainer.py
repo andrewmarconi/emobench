@@ -336,7 +336,7 @@ def train_model(
 
     # Return trainer object with model and tokenizer
     trainer.model = model
-    trainer.tokenizer = tokenizer
+    trainer.processing_class = tokenizer  # Updated from deprecated trainer.tokenizer
 
     return trainer
 
