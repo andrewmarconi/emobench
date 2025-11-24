@@ -1,0 +1,56 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment variables
+.env
+
+# Data directories (large files)
+data/raw/*
+data/processed/*
+data/splits/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/splits/.gitkeep
+
+# Experiment artifacts
+experiments/logs/*
+experiments/checkpoints/*
+experiments/results/*
+experiments/mlruns/*
+!experiments/logs/.gitkeep
+!experiments/checkpoints/.gitkeep
+!experiments/results/.gitkeep
+
+# MLflow
+mlruns/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Model cache
+models/
+*.bin
+*.safetensors
+
+# Logs
+*.log

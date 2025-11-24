@@ -1,0 +1,147 @@
+# Model configurations for SentiCompare benchmark
+# Each model has its own LoRA hyperparameters and target modules
+
+models:
+  # Large Language Models (3B+)
+  - name: "microsoft/Phi-3-mini-4k-instruct"
+    alias: "Phi-3-mini"
+    size_params: "3.8B"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+    recommended_batch_size:
+      cuda: 4
+      mps: 2
+      cpu: 1
+    memory_requirements:
+      cuda_4bit: "4GB"
+      mps_fp32: "16GB"
+      cpu: "32GB"
+
+  # Small Language Models (1-2B)
+  - name: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    alias: "TinyLlama-1.1B"
+    size_params: "1.1B"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+    recommended_batch_size:
+      cuda: 8
+      mps: 4
+      cpu: 2
+    memory_requirements:
+      cuda_4bit: "2GB"
+      mps_fp32: "8GB"
+      cpu: "16GB"
+
+  - name: "Qwen/Qwen2.5-1.5B"
+    alias: "Qwen2.5-1.5B"
+    size_params: "1.5B"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+    recommended_batch_size:
+      cuda: 8
+      mps: 4
+      cpu: 2
+    memory_requirements:
+      cuda_4bit: "2.5GB"
+      mps_fp32: "10GB"
+      cpu: "20GB"
+
+  - name: "HuggingFaceTB/SmolLM2-1.7B"
+    alias: "SmolLM2-1.7B"
+    size_params: "1.7B"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+    recommended_batch_size:
+      cuda: 8
+      mps: 4
+      cpu: 2
+    memory_requirements:
+      cuda_4bit: "2.5GB"
+      mps_fp32: "10GB"
+      cpu: "20GB"
+
+  - name: "google/gemma-3-270m"
+    alias: "Gemma-2-2B"
+    size_params: "270M"
+    architecture: "decoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+    recommended_batch_size:
+      cuda: 16
+      mps: 8
+      cpu: 4
+    memory_requirements:
+      cuda_4bit: "1GB"
+      mps_fp32: "3GB"
+      cpu: "6GB"
+
+  # Baseline Encoder Models (<200M)
+  - name: "distilbert-base-uncased"
+    alias: "DistilBERT-base"
+    size_params: "66M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["q_lin", "v_lin"]  # DistilBERT uses different naming
+    recommended_batch_size:
+      cuda: 16
+      mps: 8
+      cpu: 4
+    memory_requirements:
+      cuda_4bit: "0.5GB"
+      mps_fp32: "2GB"
+      cpu: "4GB"
+
+  - name: "roberta-base"
+    alias: "RoBERTa-base"
+    size_params: "125M"
+    architecture: "encoder-only"
+    lora:
+      rank: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: ["query", "value"]  # RoBERTa uses different naming
+    recommended_batch_size:
+      cuda: 16
+      mps: 8
+      cpu: 4
+    memory_requirements:
+      cuda_4bit: "1GB"
+      mps_fp32: "3GB"
+      cpu: "6GB"
+
+# Global LoRA defaults (used if model-specific config not provided)
+lora_defaults:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  bias: "none"
+  task_type: "SEQ_CLS"
+
+# Quantization settings (CUDA only)
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true

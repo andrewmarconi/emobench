@@ -1,0 +1,93 @@
+# Dataset configurations for SentiCompare benchmark
+
+datasets:
+  # Standard sentiment analysis datasets
+  imdb:
+    name: "IMDB Movie Reviews"
+    source: "huggingface"
+    dataset_id: "stanfordnlp/imdb"
+    text_column: "text"
+    label_column: "label"
+    num_labels: 2
+    max_length: 512
+    preprocessing:
+      lowercase: false
+      remove_special_chars: false
+      remove_urls: true
+      remove_mentions: false
+
+  sst2:
+    name: "Stanford Sentiment Treebank v2"
+    source: "huggingface"
+    dataset_id: "stanfordnlp/sst2"
+    text_column: "sentence"
+    label_column: "label"
+    num_labels: 2
+    max_length: 128
+    preprocessing:
+      lowercase: false
+      remove_special_chars: false
+      remove_urls: false
+      remove_mentions: false
+
+  amazon:
+    name: "Amazon Polarity"
+    source: "huggingface"
+    dataset_id: "amazon_polarity"
+    text_column: "content"
+    label_column: "label"
+    num_labels: 2
+    max_length: 512
+    preprocessing:
+      lowercase: false
+      remove_special_chars: false
+      remove_urls: true
+      remove_mentions: false
+
+  yelp:
+    name: "Yelp Polarity"
+    source: "huggingface"
+    dataset_id: "yelp_polarity"
+    text_column: "text"
+    label_column: "label"
+    num_labels: 2
+    max_length: 512
+    preprocessing:
+      lowercase: false
+      remove_special_chars: false
+      remove_urls: true
+      remove_mentions: false
+
+# Data split configuration
+splits:
+  train_size: 10000
+  val_size: 2000
+  test_size: 5000
+  stratify: true  # Ensure balanced class distribution
+  shuffle: true
+  random_seed: 42
+
+# Data loading settings
+loading:
+  cache_dir: "./data/raw"
+  use_cache: true
+  num_workers: 4
+  batch_size: 1000  # For preprocessing
+
+# Tokenization settings
+tokenization:
+  padding: "max_length"
+  truncation: true
+  return_attention_mask: true
+  return_token_type_ids: false
+
+# Data augmentation (optional, disabled by default)
+augmentation:
+  enabled: false
+  techniques:
+    - synonym_replacement
+    - random_insertion
+    - random_swap
+    - random_deletion
+  aug_probability: 0.1
+  num_augmented_per_sample: 1

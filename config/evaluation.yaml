@@ -1,0 +1,149 @@
+# Evaluation configuration for SentiCompare benchmark
+
+# Performance metrics
+metrics:
+  classification:
+    - accuracy
+    - f1
+    - precision
+    - recall
+    - confusion_matrix
+
+  # Additional metrics (optional)
+  extended:
+    - auc_roc
+    - matthews_corrcoef
+    - balanced_accuracy
+
+# Speed benchmarking
+speed_benchmark:
+  enabled: true
+
+  # Latency measurements
+  latency:
+    num_runs: 100
+    warmup_runs: 10
+    measure_ttft: true  # Time to first token
+    measure_median: true
+    measure_p95: true
+    measure_p99: true
+    batch_sizes: [1]  # Single inference for latency
+
+  # Throughput measurements
+  throughput:
+    enabled: true
+    num_samples: 1000
+    batch_sizes: [1, 4, 8, 16]
+    warmup_runs: 5
+
+  # Device synchronization
+  synchronization:
+    cuda: true  # Use torch.cuda.synchronize()
+    mps: false  # MPS doesn't have direct sync, rely on CPU timing
+    cpu: false
+
+# Memory profiling
+memory_profiling:
+  enabled: true
+
+  # Track memory at different stages
+  stages:
+    - model_loading
+    - inference_start
+    - inference_peak
+    - inference_end
+
+  # Memory metrics
+  metrics:
+    cuda:
+      - memory_allocated
+      - memory_reserved
+      - max_memory_allocated
+    mps:
+      - current_allocated_memory  # If available
+    cpu:
+      - ram_usage  # Via psutil
+
+  # Include memory breakdown
+  detailed_breakdown: true
+
+# Model comparison
+comparison:
+  # Ranking weights (must sum to 1.0)
+  ranking_weights:
+    accuracy: 0.30
+    f1: 0.30
+    latency_median: -0.20  # Negative = lower is better
+    throughput: 0.20
+
+  # Normalization method
+  normalization: "min-max"  # Options: min-max, z-score
+
+  # Statistical tests
+  statistical_tests:
+    enabled: true
+    tests:
+      - paired_t_test
+      - mcnemar_test
+    confidence_level: 0.95
+
+  # Pareto frontier analysis
+  pareto_analysis:
+    enabled: true
+    dimensions:
+      - accuracy
+      - latency_median
+
+# Output formats
+output:
+  save_predictions: true
+  save_metrics: true
+  formats:
+    - json
+    - csv
+    - yaml
+
+  # Per-model results
+  per_model_results:
+    directory: "./experiments/results"
+    filename_pattern: "{model_alias}_{dataset}_results.json"
+
+  # Aggregated comparison
+  comparison_results:
+    directory: "./experiments/results"
+    filename: "benchmark_comparison.json"
+    include_plots: true
+
+# Visualization settings
+visualization:
+  # Chart types to generate
+  charts:
+    - accuracy_vs_latency_scatter
+    - multi_metric_radar
+    - throughput_bar_chart
+    - memory_usage_bar_chart
+    - confusion_matrix_heatmap
+
+  # Chart settings
+  style: "seaborn"
+  figsize: [10, 6]
+  dpi: 300
+  save_format: "png"
+
+  # Dashboard settings
+  dashboard:
+    enabled: true
+    host: "localhost"
+    port: 8501
+    theme: "light"
+
+# Error analysis
+error_analysis:
+  enabled: true
+  save_misclassifications: true
+  max_examples_per_class: 100
+  include_attention_weights: false  # Expensive, disable by default
+
+# Reproducibility
+seed: 42
+deterministic: false

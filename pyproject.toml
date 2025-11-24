@@ -1,0 +1,73 @@
+[project]
+name = "senticompare"
+version = "0.1.0"
+description = "Multi-LLM Sentiment Analysis Benchmark Framework with LoRA/QLoRA fine-tuning"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Fine-tuning & Model Management
+    "transformers>=4.36.0",
+    "peft>=0.7.0",
+    "accelerate>=0.25.0",
+    "torch>=2.1.0",
+    # Data & Evaluation
+    "datasets>=2.16.0",
+    "kagglehub>=0.3.13",
+    "evaluate>=0.4.1",
+    "scikit-learn>=1.3.0",
+    # Experiment Tracking & Benchmarking
+    "tensorboard>=2.15.0",
+    "mlflow>=2.9.0",
+    # Visualization
+    "plotly>=5.18.0",
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+    "streamlit>=1.29.0",
+    # Utilities
+    "pandas>=2.1.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.66.0",
+    "psutil>=5.9.0",
+    "python-dotenv>=1.2.1",
+]
+
+[project.optional-dependencies]
+# CUDA-specific dependencies (bitsandbytes only works on CUDA)
+cuda = [
+    "bitsandbytes>=0.41.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "ipykernel>=6.25.0",
+    "jupyter>=1.0.0",
+]
+
+[project.scripts]
+senticompare = "src.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
