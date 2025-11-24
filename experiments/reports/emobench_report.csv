@@ -1,2 +1,0 @@
-model_name,dataset,metric_accuracy,metric_f1,latency_mean_ms,throughput_samples_per_sec,timestamp,_source_file,export_timestamp,model_size
-BERT-tiny,imdb,0.85,0.84,15.0,80.0,2024-01-01T00:00:00,benchmark_BERT-tiny_imdb.json,2025-11-24T18:26:56.560922,Small (<1B)

@@ -27,7 +27,6 @@ def create_parser() -> argparse.ArgumentParser:
   emobench train --model DistilBERT-base --dataset imdb
   emobench train-all --dataset imdb
   emobench benchmark --models BERT-tiny DistilBERT-base --datasets imdb sst2
-  emobench dashboard
   emobench report --results-dir experiments/results
         """,
     )
@@ -118,21 +117,6 @@ def create_parser() -> argparse.ArgumentParser:
         help="Device to use for benchmarking (default: auto)",
     )
 
-    # Dashboard command
-    dashboard_parser = subparsers.add_parser(
-        "dashboard", help="Launch interactive Streamlit dashboard"
-    )
-    dashboard_parser.add_argument(
-        "--results-dir",
-        "-r",
-        type=Path,
-        default=Path("experiments/evaluation"),
-        help="Directory containing benchmark results",
-    )
-    dashboard_parser.add_argument(
-        "--port", "-p", type=int, default=8501, help="Port to run dashboard on (default: 8501)"
-    )
-
     # Report command
     report_parser = subparsers.add_parser("report", help="Generate comparison reports")
     report_parser.add_argument(
@@ -185,10 +169,6 @@ def main():
             from src.evaluation.cli import benchmark_models
 
             benchmark_models(args)
-        elif args.command == "dashboard":
-            from src.visualization.cli import launch_dashboard
-
-            launch_dashboard(args)
         elif args.command == "report":
             from src.visualization.cli import generate_reports
 

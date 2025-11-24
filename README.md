@@ -43,8 +43,7 @@ python gradio_app.py
 - **[Model Configuration Guide](docs/MODEL_CONFIGURATION.md)** - Complete guide to all 18 models and configurations
 
 ### User Interfaces
-- **[Gradio Web UI](gradio_app.py)** - Interactive web interface for all EmoBench operations
-- **[Streamlit Dashboard](src/visualization/dashboard.py)** - Advanced visualization and analysis dashboard
+- **[Gradio Web UI](gradio_app.py)** - Interactive web interface for all EmoBench operations including dashboard
 
 ### Technical Details
 - **[CLAUDE.md](CLAUDE.md)** - Architecture, technical implementation, and development guide
@@ -159,10 +158,7 @@ uv run emobench train-all --dataset <dataset> --models <model1> <model2> ...
 uv run emobench evaluate --model <model> --dataset <dataset> --checkpoint <path>
 
 # Run benchmarks
-uv run emobench benchmark --models-dir experiments/checkpoints --dataset <dataset>
-
-# Launch dashboard
-uv run emobench dashboard
+uv run emobench benchmark --models BERT-tiny DistilBERT-base --datasets imdb sst2
 
 # Generate reports
 uv run emobench report --results-dir experiments/results

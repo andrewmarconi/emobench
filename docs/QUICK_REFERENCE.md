@@ -33,10 +33,8 @@ EmoBench follows a 3-step workflow:
 **Commands:**
 - `train` - Train a single model
 - `train-all` - Train multiple models in sequence
-- `evaluate` - Evaluate one specific checkpoint
-- `benchmark` - Evaluate ALL checkpoints in a directory
+- `benchmark` - Evaluate selected models on selected datasets
 - `report` - Generate comparison reports (CSV, JSON, Markdown)
-- `dashboard` - Launch interactive Streamlit dashboard
 
 ## Common Commands
 
@@ -66,11 +64,6 @@ uv run emobench benchmark --dataset amazon \
 ### Generate Reports
 ```bash
 uv run emobench report --results-dir experiments/results --format all
-```
-
-### Launch Dashboard
-```bash
-uv run emobench dashboard --results-dir experiments/evaluation
 ```
 
 ### Quick Test (Small Dataset)

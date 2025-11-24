@@ -46,7 +46,7 @@ Data Pipeline → Training Engine → Evaluation Engine → Comparison Module �
 2. **Training Engine** (`src/training/`): Applies LoRA/QLoRA with 4-bit quantization to train models efficiently
 3. **Evaluation Engine** (`src/evaluation/`): Measures performance metrics and speed benchmarks
 4. **Comparison Module** (`src/comparison/`): Aggregates results, performs statistical analysis, ranks models
-5. **Visualization** (`src/visualization/`): Streamlit dashboard and static reports
+5. **Visualization** (`src/visualization/`): Gradio dashboard and static reports
 
 ### Key Technical Decisions
 
@@ -105,7 +105,7 @@ The framework supports **18 models** ranging from 4M to 3.8B parameters, optimiz
 - `tensorboard` - Loss curves and visualizations
 
 **Visualization:**
-- `streamlit` - Interactive dashboard
+- `gradio` - Interactive dashboard
 - `plotly` - Interactive charts
 - `matplotlib`/`seaborn` - Static plots
 
@@ -118,7 +118,7 @@ src/
 ├── training/          # Training loop, optimizers, callbacks
 ├── evaluation/        # Metrics, speed benchmarking, memory profiling
 ├── comparison/        # Result aggregation, statistical tests, ranking
-└── visualization/     # Streamlit dashboard, plots, reports
+└── visualization/     # Gradio dashboard, plots, reports
 
 config/                # YAML configs for models, datasets, training, evaluation
 experiments/           # Training logs, checkpoints, benchmark results
@@ -147,7 +147,7 @@ scripts/               # Shell scripts for downloading models/data, training, be
 4. Generate statistical significance tests via `src/comparison/statistical.py`
 
 ### Visualization
-- Launch dashboard: `streamlit run src/visualization/dashboard.py`
+- Launch dashboard: `python gradio_app.py` (Dashboard tab)
 - Key visualizations:
   - Accuracy vs Latency scatter plot (with memory as size)
   - Multi-metric radar charts

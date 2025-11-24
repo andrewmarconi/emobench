@@ -10,6 +10,10 @@ import sys
 import subprocess
 import time
 from pathlib import Path
+import json
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Check if gradio is available
 try:
@@ -275,6 +279,123 @@ def generate_reports():
         yield (100, f"❌ Error loading markdown report: {str(e)}", "")
 
 
+def load_benchmark_results():
+    """Load benchmark results from the results directory."""
+    results_dir = Path("experiments/results")
+    if not results_dir.exists():
+        return pd.DataFrame()
+
+    # Find all benchmark result files
+    benchmark_files = list(results_dir.glob("benchmark_*.json"))
+
+    if not benchmark_files:
+        return pd.DataFrame()
+
+    # Load and combine all results
+    all_results = []
+    for results_file in benchmark_files:
+        try:
+            with open(results_file, "r") as f:
+                raw_results = json.load(f)
+
+            # Flatten the results for DataFrame
+            for model, results_list in raw_results.items():
+                for result in results_list:
+                    result["_source_file"] = results_file.name
+                    all_results.append(result)
+
+        except Exception as e:
+            continue
+
+    if not all_results:
+        return pd.DataFrame()
+
+    return pd.DataFrame(all_results)
+
+
+def create_dashboard_summary(results_df):
+    """Create a summary of benchmark results."""
+    if results_df.empty:
+        return {
+            "total_models": 0,
+            "total_datasets": 0,
+            "total_results": 0,
+            "last_updated": "No data available",
+            "top_model": "N/A",
+        }
+
+    summary = {
+        "total_models": results_df["model_name"].nunique(),
+        "total_datasets": results_df["dataset"].nunique(),
+        "total_results": len(results_df),
+        "last_updated": "Unknown",
+    }
+
+    # Find top performing model (highest accuracy)
+    if "metric_accuracy" in results_df.columns:
+        valid_data = results_df.dropna(subset=["metric_accuracy"])
+        if not valid_data.empty:
+            best_idx = valid_data["metric_accuracy"].idxmax()
+            summary["top_model"] = valid_data.loc[best_idx, "model_name"]
+        else:
+            summary["top_model"] = "N/A"
+    else:
+        summary["top_model"] = "N/A"
+
+    # Try to get timestamp
+    if "timestamp" in results_df.columns:
+        timestamps = pd.to_datetime(results_df["timestamp"], errors="coerce")
+        if not timestamps.empty:
+            summary["last_updated"] = timestamps.max().strftime("%Y-%m-%d %H:%M:%S")
+
+    return summary
+
+
+def create_scatter_plot(results_df):
+    """Create a scatter plot of accuracy vs latency."""
+    if results_df.empty or "metric_accuracy" not in results_df.columns:
+        # Return empty figure
+        fig = go.Figure()
+        fig.update_layout(
+            title="No Data Available", xaxis_title="Accuracy", yaxis_title="Latency (ms)"
+        )
+        return fig
+
+    # Prepare data
+    plot_data = results_df.dropna(subset=["metric_accuracy"])
+
+    if plot_data.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="No Valid Data for Plotting", xaxis_title="Accuracy", yaxis_title="Latency (ms)"
+        )
+        return fig
+
+    # Create scatter plot
+    fig = px.scatter(
+        plot_data,
+        x="metric_accuracy",
+        y="latency_mean_ms",
+        color="model_name",
+        hover_data=["dataset", "model_name"],
+        title="Model Performance: Accuracy vs Latency",
+        labels={
+            "metric_accuracy": "Accuracy",
+            "latency_mean_ms": "Latency (ms)",
+            "model_name": "Model",
+        },
+    )
+
+    fig.update_layout(
+        xaxis_title="Accuracy",
+        yaxis_title="Latency (ms)",
+        font=dict(size=12),
+        title_font=dict(size=16),
+    )
+
+    return fig
+
+
 def create_interface():
     """Create the Gradio interface."""
     with gr.Blocks(title="EmoBench - LLM Benchmark UI") as interface:
@@ -412,39 +533,52 @@ def create_interface():
                     outputs=[report_progress, report_output, report_markdown],
                 )
 
-            # Tab 6: Dashboard (Simplified)
+            # Tab 6: Dashboard
             with gr.TabItem("📈 Dashboard"):
-                gr.Markdown("### Results Dashboard (Basic)")
+                gr.Markdown("### Results Dashboard")
 
-                gr.Markdown("""
-                **Dashboard functionality is available through the command line:**
+                # Load data and create dashboard components
+                results_df = load_benchmark_results()
+                summary = create_dashboard_summary(results_df)
+                scatter_fig = create_scatter_plot(results_df)
 
-                ```bash
-                # Launch Streamlit dashboard
-                uv run emobench dashboard
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("## 📊 Results Summary")
+                        gr.Markdown(f"""
+                        - **Total Models:** {summary["total_models"]}
+                        - **Total Datasets:** {summary["total_datasets"]}
+                        - **Total Results:** {summary["total_results"]}
+                        - **Last Updated:** {summary["last_updated"]}
+                        - **Top Model:** {summary["top_model"]}
+                        """)
 
-                # Or generate static reports
-                uv run emobench report --format all
-                ```
+                        gr.Markdown(
+                            "*💡 Use the **Reports** tab for data export and detailed analysis*"
+                        )
 
-                **Available Metrics:**
-                - Accuracy, F1-Score, Precision, Recall
-                - Balanced Accuracy, Macro/Micro F1
-                - Latency percentiles (P50, P95, P99)
-                - Throughput, Memory usage
-                - Statistical significance tests
-                - Hardware utilization metrics
+                    with gr.Column():
+                        gr.Markdown("## 📈 Performance Visualization")
+                        gr.Plot(scatter_fig)
 
-                **Features:**
-                - Interactive scatter plots
-                - Leaderboards and rankings
-                - Statistical comparisons
-                - Export capabilities
-                """)
+                if not results_df.empty:
+                    gr.Markdown("## 📋 Detailed Results")
+                    # Remove internal columns from display
+                    display_df = results_df.drop(
+                        columns=["timestamp", "_source_file"], errors="ignore"
+                    )
+                    gr.Dataframe(display_df, label="Benchmark Results Table")
+                else:
+                    gr.Markdown("""
+                    ### No Results Available
 
-                gr.Markdown(
-                    "**Note:** Full dashboard requires additional dependencies (plotly, pandas, streamlit)"
-                )
+                    Run some benchmarks first to see results here:
+
+                    1. Go to the **Benchmark** tab
+                    2. Select models and datasets
+                    3. Click **Start Benchmark**
+                    4. Return here to view results
+                    """)
 
     return interface
 
