@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**EmoBench** is a multi-LLM sentiment analysis benchmark framework that fine-tunes, evaluates, and compares small language models (SLMs) using Parameter-Efficient Fine-Tuning (PEFT) techniques (LoRA/QLoRA) with 4-bit quantization. The framework systematically measures both performance metrics (accuracy, F1, precision, recall) and speed metrics (latency, throughput, memory usage) across multiple models.
+**MoodBench** is a multi-LLM sentiment analysis benchmark framework that fine-tunes, evaluates, and compares small language models (SLMs) using Parameter-Efficient Fine-Tuning (PEFT) techniques (LoRA/QLoRA) with 4-bit quantization. The framework systematically measures both performance metrics (accuracy, F1, precision, recall) and speed metrics (latency, throughput, memory usage) across multiple models.
 
 ## Package Management
 
@@ -147,12 +147,12 @@ scripts/               # Shell scripts for downloading models/data, training, be
 4. Generate statistical significance tests via `src/comparison/statistical.py`
 
 ### Visualization
-- Launch dashboard: `python gradio_app.py` (Dashboard tab)
+- Launch dashboard: `python gradio_app.py` (Modular UI with training, benchmarking, analysis, NPS, and methodology tabs)
 - Key visualizations:
-  - Accuracy vs Latency scatter plot (with memory as size)
-  - Multi-metric radar charts
-  - Throughput comparisons
-  - Detailed results table
+  - Analysis tab: Accuracy vs Latency scatter plot, F1 score charts, latency distributions
+  - NPS tab: Customer vs model NPS comparisons, category breakdowns, actual value markers
+  - Benchmarking tab: Real-time progress tracking and results
+  - Training tab: Model status matrix and progress monitoring
 
 ## Important Patterns
 
@@ -233,7 +233,7 @@ Configuration is managed via YAML files in `config/`:
 ### Quick Start: Ultra-Fast Benchmark (1 hour)
 For rapid experimentation and CI/CD testing:
 ```bash
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models BERT-tiny BERT-mini BERT-small ELECTRA-small MiniLM-L12
 ```
 - 5 ultra-tiny models (4M-33M parameters)
@@ -244,7 +244,7 @@ uv run emobench train-all --dataset amazon --device=mps \
 ### Production: Encoder Comparison (2-3 hours)
 For comprehensive encoder architecture study:
 ```bash
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models DistilBERT-base DistilRoBERTa DeBERTa-v3-small BERT-base RoBERTa-base
 ```
 - 5 proven production models (66M-125M)
@@ -254,7 +254,7 @@ uv run emobench train-all --dataset amazon --device=mps \
 ### Research: Full Tiny Benchmark (4-5 hours)
 For comprehensive lightweight model comparison:
 ```bash
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models BERT-tiny BERT-mini BERT-small DistilBERT-base DistilRoBERTa \
            DeBERTa-v3-small BERT-base RoBERTa-base GPT2-small Pythia-70m
 ```

@@ -1,4 +1,4 @@
-![EmoBench](emobench-logo.svg)
+![MoodBench](moodbench-logo.svg)
 ## Multi-LLM Sentiment Analysis Benchmark Framework
 
 **Fast, efficient benchmarking of 17 small language models (4M-410M parameters) for sentiment analysis using LoRA fine-tuning.**
@@ -15,14 +15,14 @@
 uv sync
 
 # Train models (1 hour, 5 models)
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models BERT-tiny BERT-mini BERT-small ELECTRA-small MiniLM-L12
 
 # Evaluate models
-uv run emobench benchmark --dataset amazon
+uv run moodbench benchmark --dataset amazon
 
 # View results
-uv run emobench report --results-dir experiments/results
+uv run moodbench report --results-dir experiments/results
 ```
 
 ### Web Interface (Alternative)
@@ -36,6 +36,8 @@ python gradio_app.py
 # Open http://localhost:7860 in your browser
 ```
 
+The web interface provides modular tabs for training, benchmarking, analysis, NPS estimation, and methodology documentation.
+
 ## 📚 Documentation
 
 ### Getting Started
@@ -43,15 +45,15 @@ python gradio_app.py
 - **[Model Configuration Guide](docs/MODEL_CONFIGURATION.md)** - Complete guide to all 18 models and configurations
 
 ### User Interfaces
-- **[Gradio Web UI](gradio_app.py)** - Interactive web interface for all EmoBench operations including dashboard
+- **[Gradio Web UI](gradio_app.py)** - Interactive web interface with modular tabs for training, benchmarking, analysis, NPS estimation, and methodology
 
 ### Technical Details
 - **[CLAUDE.md](CLAUDE.md)** - Architecture, technical implementation, and development guide
 - **[Documentation Index](docs/README.md)** - Navigate all documentation by role and use case
 
-## 🎯 What is EmoBench?
+## 🎯 What is MoodBench?
 
-EmoBench is an automated benchmarking framework that fine-tunes, evaluates, and compares small language models for sentiment analysis. It uses Parameter-Efficient Fine-Tuning (PEFT) with LoRA to enable efficient training on consumer hardware.
+MoodBench is an automated benchmarking framework that fine-tunes, evaluates, and compares small language models for sentiment analysis. It uses Parameter-Efficient Fine-Tuning (PEFT) with LoRA to enable efficient training on consumer hardware.
 
 **Key Features:**
 - 🏃 **17 optimized models** from 4M to 410M parameters
@@ -78,19 +80,19 @@ EmoBench is an automated benchmarking framework that fine-tunes, evaluates, and 
 
 ### Quick Validation
 ```bash
-export EMOBENCH_TEST_MODE=1
-uv run emobench train --model BERT-tiny --dataset imdb --device=mps
+export MOODBENCH_TEST_MODE=1
+uv run moodbench train --model BERT-tiny --dataset imdb --device=mps
 ```
 
 ### Production Model Selection
 ```bash
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models DistilBERT-base DistilRoBERTa DeBERTa-v3-small RoBERTa-base
 ```
 
 ### Research Comparison
 ```bash
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models BERT-tiny BERT-mini BERT-small BERT-base DistilBERT-base RoBERTa-base
 ```
 
@@ -103,6 +105,8 @@ Data Pipeline → Training Engine → Evaluation Engine → Comparison Module �
 Preprocessor   4-bit Quant     Speed Benchmark          Analysis          Reports
  Tokenizer     Multi-Device     Memory Profile           Ranking          Charts
 ```
+
+**Web Interface:** Modular Gradio UI with dedicated tabs for training, benchmarking, analysis, NPS estimation, and methodology documentation.
 
 ## 📦 Supported Datasets
 
@@ -128,15 +132,15 @@ Preprocessor   4-bit Quant     Speed Benchmark          Analysis          Report
 
 ### Using uv (Recommended)
 ```bash
-git clone https://github.com/yourusername/emobench.git
-cd emobench
+git clone https://github.com/yourusername/moodbench.git
+cd moodbench
 uv sync
 ```
 
 ### Using pip
 ```bash
-git clone https://github.com/yourusername/emobench.git
-cd emobench
+git clone https://github.com/yourusername/moodbench.git
+cd moodbench
 pip install -e .
 ```
 
@@ -149,19 +153,19 @@ pip install -e .
 
 ```bash
 # Train single model
-uv run emobench train --model <model-name> --dataset <dataset>
+uv run moodbench train --model <model-name> --dataset <dataset>
 
 # Train multiple models
-uv run emobench train-all --dataset <dataset> --models <model1> <model2> ...
+uv run moodbench train-all --dataset <dataset> --models <model1> <model2> ...
 
 # Evaluate model
-uv run emobench evaluate --model <model> --dataset <dataset> --checkpoint <path>
+uv run moodbench evaluate --model <model> --dataset <dataset> --checkpoint <path>
 
 # Run benchmarks
-uv run emobench benchmark --models BERT-tiny DistilBERT-base --datasets imdb sst2
+uv run moodbench benchmark --models BERT-tiny DistilBERT-base --datasets imdb sst2
 
 # Generate reports
-uv run emobench report --results-dir experiments/results
+uv run moodbench report --results-dir experiments/results
 ```
 
 See [Quick Reference](docs/QUICK_REFERENCE.md) for detailed usage.
@@ -169,7 +173,7 @@ See [Quick Reference](docs/QUICK_REFERENCE.md) for detailed usage.
 ## 📁 Project Structure
 
 ```
-emobench/
+moodbench/
 ├── config/              # Model, dataset, and training configurations
 ├── src/                 # Core framework code
 │   ├── data/           # Dataset loading and preprocessing
@@ -177,6 +181,7 @@ emobench/
 │   ├── training/       # Training engine and optimizers
 │   ├── evaluation/     # Metrics and benchmarking
 │   ├── comparison/     # Result aggregation and ranking
+│   ├── ui/             # Modular Gradio web interface components
 │   └── visualization/  # Dashboard and reporting
 ├── experiments/        # Training logs, checkpoints, results
 ├── notebooks/          # Jupyter notebooks for analysis
@@ -225,7 +230,7 @@ export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
 ### Training Too Slow
 ```bash
 # Enable test mode with small dataset
-export EMOBENCH_TEST_MODE=1
+export MOODBENCH_TEST_MODE=1
 
 # Start with ultra-tiny models
 --models BERT-tiny BERT-mini
@@ -270,7 +275,7 @@ Built with:
 - [Transformers](https://github.com/huggingface/transformers) - Model implementations
 - [PEFT](https://github.com/huggingface/peft) - LoRA fine-tuning
 - [PyTorch](https://pytorch.org/) - Deep learning framework
-- [Streamlit](https://streamlit.io/) - Interactive dashboards
+- [Gradio](https://gradio.app/) - Interactive web interface
 
 ---
 

@@ -1,6 +1,6 @@
-# EmoBench Documentation
+# MoodBench Documentation
 
-Welcome to the EmoBench documentation! This directory contains comprehensive guides for using the multi-LLM sentiment analysis benchmark framework.
+Welcome to the MoodBench documentation! This directory contains comprehensive guides for using the multi-LLM sentiment analysis benchmark framework.
 
 ## 📚 Documentation Index
 
@@ -101,18 +101,18 @@ Located in the root directory:
 
 ```bash
 # 1. Quick validation (5 minutes)
-export EMOBENCH_TEST_MODE=1
-uv run emobench train --model BERT-tiny --dataset imdb --device=mps
+export MOODBENCH_TEST_MODE=1
+uv run moodbench train --model BERT-tiny --dataset imdb --device=mps
 
 # 2. Train models (1 hour)
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models BERT-tiny BERT-mini BERT-small ELECTRA-small MiniLM-L12
 
 # 3. Evaluate models
-uv run emobench benchmark --dataset amazon
+uv run moodbench benchmark --dataset amazon
 
 # 4. Analyze results
-uv run emobench report --results-dir experiments/results
+uv run moodbench report --results-dir experiments/results
 ```
 
 See: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
@@ -144,8 +144,8 @@ uv run python -c "from src.models.model_registry import ModelRegistry; \
   print(ModelRegistry().list_models())"
 
 # 3. Train on small dataset
-export EMOBENCH_TEST_MODE=1
-uv run emobench train --model ModelName --dataset imdb --device=mps
+export MOODBENCH_TEST_MODE=1
+uv run moodbench train --model ModelName --dataset imdb --device=mps
 ```
 
 See: [MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md) Section: Adding New Models
@@ -154,12 +154,12 @@ See: [MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md) Section: Adding New Models
 
 ```bash
 # Option 1: Use smaller models
-uv run emobench train-all --dataset amazon --device=mps \
+uv run moodbench train-all --dataset amazon --device=mps \
   --models BERT-tiny BERT-mini BERT-small DistilBERT-base
 
 # Option 2: Allow higher memory allocation (MPS)
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-uv run emobench train-all --dataset amazon --device=mps
+uv run moodbench train-all --dataset amazon --device=mps
 
 # Option 3: Check which models fit in memory
 # Models < 200M typically use < 4GB on MPS
@@ -232,7 +232,7 @@ config/
 → Check [MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md) Section: Target Module Mapping
 
 ### "Training too slow"
-→ Start with ultra-tiny models (BERT-tiny, BERT-mini) or enable test mode: `export EMOBENCH_TEST_MODE=1`
+→ Start with ultra-tiny models (BERT-tiny, BERT-mini) or enable test mode: `export MOODBENCH_TEST_MODE=1`
 
 ## 📝 Additional Resources
 
@@ -261,4 +261,4 @@ For issues or questions:
 
 **Documentation version:** 1.0.0
 **Last updated:** 2025-11-24
-**EmoBench version:** 0.1.0
+**MoodBench version:** 0.1.0
