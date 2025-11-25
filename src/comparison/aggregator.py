@@ -233,9 +233,24 @@ class BenchmarkAggregator:
             if not agg_functions:  # If no numeric columns found
                 agg_functions = {"model_name": "count"}  # Just count occurrences
 
-        # For now, just return the combined data without complex aggregation
-        # TODO: Fix the aggregation logic to handle MultiIndex columns properly
-        aggregated = combined_df
+        # Perform the aggregation
+        try:
+            aggregated = combined_df.groupby(group_by).agg(agg_functions)
+
+            # Handle MultiIndex columns that result from aggregation functions
+            if isinstance(aggregated.columns, pd.MultiIndex):
+                # Flatten MultiIndex columns for easier access
+                # Format: column_name_function (e.g., metric_accuracy_mean)
+                aggregated.columns = [
+                    f"{col[0]}_{col[1]}" if col[1] else col[0] for col in aggregated.columns
+                ]
+
+            # Reset index to make groupby columns regular columns
+            aggregated = aggregated.reset_index()
+
+        except Exception as e:
+            logger.warning(f"Aggregation failed: {e}. Returning unaggregated data.")
+            aggregated = combined_df
 
         self.aggregated_results = aggregated
         logger.info(f"Aggregated {len(combined_df)} results into {len(aggregated)} rows")

@@ -32,7 +32,26 @@ def benchmark_models(args):
         models = args.models
         logger.info(f"Benchmarking selected models: {models}")
 
-    logger.info(f"Running benchmark on datasets: {args.datasets}")
+    # Handle dataset selection
+    if args.all_datasets and args.datasets:
+        raise ValueError("Cannot specify both --datasets and --all-datasets. Choose one.")
+    elif not args.all_datasets and not args.datasets:
+        raise ValueError("Must specify either --datasets or --all-datasets.")
+
+    if args.all_datasets:
+        # Load all available datasets from config
+        import yaml
+        from pathlib import Path
+
+        config_path = Path(__file__).parent.parent.parent / "config" / "datasets.yaml"
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        datasets = list(config["datasets"].keys())
+        logger.info(f"Benchmarking on all {len(datasets)} available datasets: {datasets}")
+    else:
+        datasets = args.datasets
+        logger.info(f"Running benchmark on datasets: {datasets}")
 
     try:
         # Import evaluation components
@@ -47,7 +66,7 @@ def benchmark_models(args):
         # Run benchmark
         benchmark_func(
             models=models,
-            datasets=args.datasets,
+            datasets=datasets,
             checkpoints_dir=str(args.checkpoints_dir),
             output_dir=str(args.output_dir),
             device=device_str,

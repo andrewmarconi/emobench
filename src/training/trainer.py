@@ -52,24 +52,149 @@ class EmoBenchTrainer:
         """
         logger.info(f"Starting training for {self.model_name} on {self.dataset_name}")
 
-        # This is a placeholder implementation
-        # In a real implementation, this would:
-        # 1. Load the model and tokenizer
-        # 2. Load the dataset
-        # 3. Set up training arguments
-        # 4. Initialize the Trainer
-        # 5. Train with MLflow logging
-        # 6. Return results
+        try:
+            # 1. Load model and tokenizer
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
+            from src.models.model_registry import ModelRegistry
 
-        results = {
-            "model_name": self.model_name,
-            "dataset_name": self.dataset_name,
-            "status": "completed",
-            "message": "Training completed (placeholder implementation)",
+            registry = ModelRegistry()
+            model_config = registry.get_model_config(self.model_name)
+
+            # Get device
+            from src.utils.device import get_device
+
+            device = get_device() if self.device == "auto" else self.device
+            device_str = str(device) if hasattr(device, "type") else str(device)
+
+            # Load model and tokenizer
+            model_name_or_path = model_config["name"]
+            num_labels = 2  # Binary classification for sentiment
+
+            model = AutoModelForSequenceClassification.from_pretrained(
+                model_name_or_path,
+                num_labels=num_labels,
+            )
+            tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+            # Move model to device
+            model.to(device)
+
+            self.model = model
+            self.tokenizer = tokenizer
+
+            # 2. Load and prepare dataset
+            from src.data.loader import SentimentDataLoader
+
+            data_loader = SentimentDataLoader(self.dataset_name, self.model_name)
+            dataset = data_loader.load()
+            train_dataset, val_dataset, test_dataset = data_loader.prepare_splits(dataset)
+
+            # Use validation set for evaluation during training
+            eval_dataset = val_dataset
+
+            # 3. Set up training arguments
+            training_args = self._get_training_args(training_config)
+
+            # 4. Initialize trainer with callbacks
+            from src.training.callbacks import get_default_callbacks
+
+            callbacks = get_default_callbacks()
+            trainer = Trainer(
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset,
+                eval_dataset=eval_dataset,
+                callbacks=callbacks,
+            )
+
+            # 5. Train the model
+            logger.info("Starting training...")
+            train_result = trainer.train()
+
+            # 6. Save the model
+            output_dir = Path(
+                f"experiments/checkpoints/{self.model_name}_{self.dataset_name}/final"
+            )
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            trainer.save_model(str(output_dir))
+            tokenizer.save_pretrained(str(output_dir))
+
+            # 7. Return results
+            results = {
+                "model_name": self.model_name,
+                "dataset_name": self.dataset_name,
+                "status": "completed",
+                "training_loss": train_result.training_loss,
+                "metrics": train_result.metrics if hasattr(train_result, "metrics") else {},
+                "output_dir": str(output_dir),
+                "device": device_str,
+            }
+
+            logger.info(f"Training completed for {self.model_name}. Model saved to {output_dir}")
+            return results
+
+        except Exception as e:
+            logger.error(f"Training failed for {self.model_name}: {e}")
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return {
+                "model_name": self.model_name,
+                "dataset_name": self.dataset_name,
+                "status": "failed",
+                "error": str(e),
+            }
+
+            logger.info(f"Training completed for {self.model_name}. Model saved to {output_dir}")
+            return results
+
+        except Exception as e:
+            logger.error(f"Training failed for {self.model_name}: {e}")
+            return {
+                "model_name": self.model_name,
+                "dataset_name": self.dataset_name,
+                "status": "failed",
+                "error": str(e),
+            }
+
+    def _get_training_args(self, training_config: Optional[Dict] = None) -> TrainingArguments:
+        """
+        Get training arguments with defaults and overrides.
+
+        Args:
+            training_config: Training configuration overrides
+
+        Returns:
+            TrainingArguments: Configured training arguments
+        """
+        # Default training configuration
+        default_config = {
+            "output_dir": f"./experiments/checkpoints/{self.model_name}_{self.dataset_name}",
+            "num_train_epochs": 3,
+            "per_device_train_batch_size": 16,
+            "per_device_eval_batch_size": 16,
+            "learning_rate": 2e-5,
+            "weight_decay": 0.01,
+            "logging_steps": 100,
+            "evaluation_strategy": "steps",
+            "eval_steps": 500,
+            "save_steps": 500,
+            "save_total_limit": 2,
+            "load_best_model_at_end": True,
+            "metric_for_best_model": "accuracy",
+            "greater_is_better": True,
         }
 
-        logger.info(f"Training completed for {self.model_name}")
-        return results
+        # Apply overrides
+        if training_config:
+            default_config.update(training_config)
+
+        # Create output directory
+        output_dir = Path(default_config["output_dir"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        return TrainingArguments(**default_config)
 
     def train_all(
         self,

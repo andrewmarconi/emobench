@@ -98,8 +98,12 @@ def create_parser() -> argparse.ArgumentParser:
         "--datasets",
         "-d",
         nargs="+",
-        required=True,
-        help="Dataset names to benchmark on (space-separated)",
+        help="Dataset names to benchmark on (space-separated). Use --all-datasets to benchmark on all available datasets.",
+    )
+    benchmark_parser.add_argument(
+        "--all-datasets",
+        action="store_true",
+        help="Benchmark on all available datasets",
     )
     benchmark_parser.add_argument(
         "--checkpoints-dir",
