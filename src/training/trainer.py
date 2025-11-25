@@ -107,14 +107,34 @@ class EmoBenchTrainer:
                 callbacks=callbacks,
             )
 
-            # 5. Train the model
-            logger.info("Starting training...")
-            train_result = trainer.train()
-
-            # 6. Save the model
+            # 5. Check if model already exists
             output_dir = Path(
                 f"experiments/checkpoints/{self.model_name}_{self.dataset_name}/final"
             )
+
+            if output_dir.exists():
+                # Check if it contains a trained model (look for pytorch_model.bin or model.safetensors)
+                model_files = list(output_dir.glob("*.bin")) + list(
+                    output_dir.glob("*.safetensors")
+                )
+                if model_files:
+                    logger.info(
+                        f"Model checkpoint already exists at {output_dir}. Skipping training."
+                    )
+                    return {
+                        "model_name": self.model_name,
+                        "dataset_name": self.dataset_name,
+                        "status": "skipped",
+                        "message": f"Model checkpoint already exists at {output_dir}",
+                        "output_dir": str(output_dir),
+                        "device": device_str,
+                    }
+
+            # 6. Train the model
+            logger.info("Starting training...")
+            train_result = trainer.train()
+
+            # 7. Save the model
             output_dir.mkdir(parents=True, exist_ok=True)
 
             trainer.save_model(str(output_dir))
@@ -139,18 +159,6 @@ class EmoBenchTrainer:
             import traceback
 
             logger.error(f"Traceback: {traceback.format_exc()}")
-            return {
-                "model_name": self.model_name,
-                "dataset_name": self.dataset_name,
-                "status": "failed",
-                "error": str(e),
-            }
-
-            logger.info(f"Training completed for {self.model_name}. Model saved to {output_dir}")
-            return results
-
-        except Exception as e:
-            logger.error(f"Training failed for {self.model_name}: {e}")
             return {
                 "model_name": self.model_name,
                 "dataset_name": self.dataset_name,
@@ -450,6 +458,26 @@ def train_model(
         compute_metrics=compute_metrics,
     )
 
+    # Check if model already exists
+    final_model_path = Path(output_dir) / "final"
+    if final_model_path.exists():
+        # Check if it contains a trained model (look for pytorch_model.bin or model.safetensors)
+        model_files = list(final_model_path.glob("*.bin")) + list(
+            final_model_path.glob("*.safetensors")
+        )
+        if model_files:
+            logger.info(
+                f"Model checkpoint already exists at {final_model_path}. Skipping training."
+            )
+            return {
+                "model_name": model_name,
+                "dataset_name": dataset_name,
+                "status": "skipped",
+                "message": f"Model checkpoint already exists at {final_model_path}",
+                "device": device_str,
+                "completed": False,
+            }
+
     # Train the model
     logger.info("Starting training...")
     trainer.train()
@@ -463,7 +491,6 @@ def train_model(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    final_model_path = output_path / "final"
     final_model_path.mkdir(exist_ok=True)
 
     logger.info(f"Saving model to {final_model_path}")
