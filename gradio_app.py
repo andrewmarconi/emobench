@@ -1,20 +1,18 @@
 """
-Simple Gradio Web UI for EmoBench - Multi-LLM Sentiment Analysis Benchmark Framework
+Simple Gradio Web UI for MoodBench - Multi-LLM Sentiment Analysis Benchmark Framework
 
-A basic web interface demonstrating EmoBench functionality.
+A basic web interface demonstrating MoodBench functionality.
 Install required dependencies: pip install gradio
 """
 
 import os
 import sys
 import subprocess
-import time
 from pathlib import Path
 import json
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 
 # Check if gradio is available
 try:
@@ -48,7 +46,7 @@ def run_command_stream(command_list, timeout=300):
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path(__file__).parent)
         # Enable test mode for faster training in Gradio
-        env["EMOBENCH_TEST_MODE"] = "1"
+        env["MOODBENCH_TEST_MODE"] = "1"
 
         process = subprocess.Popen(
             command_list,
@@ -271,7 +269,7 @@ def generate_reports():
     try:
         import os
 
-        markdown_path = "experiments/reports/emobench_report.md"
+        markdown_path = "experiments/reports/moodbench_report.md"
         if os.path.exists(markdown_path):
             with open(markdown_path, "r") as f:
                 markdown_content = f.read()
@@ -307,7 +305,7 @@ def load_benchmark_results():
                     result["_source_file"] = results_file.name
                     all_results.append(result)
 
-        except Exception as e:
+        except Exception:
             continue
 
     if not all_results:
@@ -347,7 +345,7 @@ def create_dashboard_summary(results_df):
 
     # Try to get timestamp
     if "timestamp" in results_df.columns:
-        timestamps = pd.to_datetime(results_df["timestamp"], errors="coerce")
+        timestamps = pd.to_datetime(results_df["timestamp"], unit="s", errors="coerce")
         if not timestamps.empty:
             summary["last_updated"] = timestamps.max().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -453,12 +451,12 @@ def create_training_matrix():
 
 
 def create_scatter_plot(results_df):
-    """Create a scatter plot of accuracy vs latency with individual runs and model means."""
+    """Create a scatter plot of latency vs accuracy with individual runs and model means."""
     if results_df.empty or "metric_accuracy" not in results_df.columns:
         # Return empty figure
         fig = go.Figure()
         fig.update_layout(
-            title="No Data Available", xaxis_title="Accuracy", yaxis_title="Latency (ms)"
+            title="No Data Available", xaxis_title="Latency (ms)", yaxis_title="Accuracy"
         )
         return fig
 
@@ -468,7 +466,7 @@ def create_scatter_plot(results_df):
     if plot_data.empty:
         fig = go.Figure()
         fig.update_layout(
-            title="No Valid Data for Plotting", xaxis_title="Accuracy", yaxis_title="Latency (ms)"
+            title="No Valid Data for Plotting", xaxis_title="Latency (ms)", yaxis_title="Accuracy"
         )
         return fig
 
@@ -510,16 +508,16 @@ def create_scatter_plot(results_df):
         # Individual runs for this model
         fig.add_trace(
             go.Scatter(
-                x=model_data["metric_accuracy"],
-                y=model_data["latency_mean_ms"],
+                x=model_data["latency_mean_ms"],
+                y=model_data["metric_accuracy"],
                 mode="markers",
                 name=f"{model} (runs)",
                 marker=dict(
                     size=6, opacity=0.6, color=model_color, line=dict(width=1, color=model_color)
                 ),
                 hovertemplate=f"<b>{model}</b><br>"
-                + "Accuracy: %{x:.4f}<br>"
-                + "Latency: %{y:.2f}ms<br>"
+                + "Latency: %{x:.2f}ms<br>"
+                + "Accuracy: %{y:.4f}<br>"
                 + "Dataset: %{customdata}<extra></extra>",
                 customdata=model_data["dataset"],
                 legendgroup=model,
@@ -535,8 +533,8 @@ def create_scatter_plot(results_df):
 
             fig.add_trace(
                 go.Scatter(
-                    x=model_mean["metric_accuracy"],
-                    y=model_mean["latency_mean_ms"],
+                    x=model_mean["latency_mean_ms"],
+                    y=model_mean["metric_accuracy"],
                     mode="markers",
                     name=f"{model} (mean)",
                     marker=dict(
@@ -547,8 +545,8 @@ def create_scatter_plot(results_df):
                         line=dict(width=2, color="black"),
                     ),
                     hovertemplate=f"<b>{model} (Mean)</b><br>"
-                    + "Avg Accuracy: %{x:.4f}<br>"
-                    + "Avg Latency: %{y:.2f}ms<extra></extra>",
+                    + "Avg Latency: %{x:.2f}ms<br>"
+                    + "Avg Accuracy: %{y:.4f}<extra></extra>",
                     legendgroup=model,
                     showlegend=True,
                 )
@@ -556,9 +554,9 @@ def create_scatter_plot(results_df):
 
     # Update layout
     fig.update_layout(
-        title="Model Performance: Accuracy vs Latency",
-        xaxis_title="Accuracy",
-        yaxis_title="Latency (ms)",
+        title="Model Performance: Latency vs Accuracy",
+        xaxis_title="Latency (ms)",
+        yaxis_title="Accuracy",
         font=dict(size=12),
         title_font=dict(size=16),
         showlegend=False,  # Hide legend since hover provides details
@@ -1053,8 +1051,31 @@ def create_efficiency_bubble_chart(results_df):
         fig.update_layout(title="No Data Available")
         return fig
 
+    # Filter out rows with NaN values in critical columns for bubble chart
+    plot_data = results_df.dropna(
+        subset=["latency_mean_ms", "metric_accuracy", "throughput_samples_per_sec"]
+    )
+
+    if plot_data.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="No Complete Data Available for Efficiency Chart",
+            annotations=[
+                dict(
+                    text="Run benchmarks to generate throughput and latency data",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=14),
+                )
+            ],
+        )
+        return fig
+
     fig = px.scatter(
-        results_df,
+        plot_data,
         x="latency_mean_ms",
         y="metric_accuracy",
         size="throughput_samples_per_sec",
@@ -1072,6 +1093,877 @@ def create_efficiency_bubble_chart(results_df):
     fig.update_layout(height=400, showlegend=True)
 
     return fig
+
+
+def load_nps_results():
+    """Load NPS estimation results from the results directory."""
+    results_dir = Path("experiments/results")
+    if not results_dir.exists():
+        return pd.DataFrame()
+
+    # Find NPS result files
+    nps_files = list(results_dir.glob("estimated_nps_results.json"))
+
+    if not nps_files:
+        return pd.DataFrame()
+
+    # Load the most recent NPS results
+    nps_file = max(nps_files, key=lambda x: x.stat().st_mtime)
+
+    try:
+        with open(nps_file, "r") as f:
+            data = json.load(f)
+
+        if "results" in data:
+            return pd.DataFrame(data["results"])
+        else:
+            return pd.DataFrame(data)
+
+    except Exception as e:
+        print(f"Error loading NPS results: {e}")
+        return pd.DataFrame()
+
+
+def create_nps_stacked_chart(nps_df):
+    """Create stacked bar chart showing NPS categories grouped by branch."""
+    if nps_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="No NPS Data Available")
+        return fig
+
+    # Filter for Disneyland data
+    dataset_col = "test_dataset" if "test_dataset" in nps_df.columns else "dataset"
+    if "branch" in nps_df.columns:
+        disneyland_data = nps_df[
+            (nps_df[dataset_col] == "disneyland") & (nps_df["branch"].notna())
+        ].copy()
+    else:
+        disneyland_data = nps_df[nps_df[dataset_col] == "disneyland"].copy()
+
+    if disneyland_data.empty:
+        fig = go.Figure()
+        fig.update_layout(title="No Disneyland NPS Data Available")
+        return fig
+
+    # Prepare data for stacked bar chart grouped by branch
+    has_branch_col = "branch" in disneyland_data.columns
+
+    if has_branch_col:
+        # When we have branch data, show branch + model combinations as before
+        plot_data = []
+        for _, row in disneyland_data.iterrows():
+            model_name = row["model_name"]
+            branch = row["branch"].replace("Disneyland_", "")
+            label = f"{branch}<br>{model_name}"
+
+            # Add detractors (bottom layer)
+            plot_data.append(
+                {
+                    "branch_model": label,
+                    "category": "Detractors",
+                    "percentage": row["detractors_percent"],
+                    "count": row["detractors_count"],
+                    "nps_score": row["nps_score"],
+                }
+            )
+
+            # Add passives (middle layer)
+            plot_data.append(
+                {
+                    "branch_model": label,
+                    "category": "Passives",
+                    "percentage": row["passives_percent"],
+                    "count": row["passives_count"],
+                    "nps_score": row["nps_score"],
+                }
+            )
+
+            # Add promoters (top layer)
+            plot_data.append(
+                {
+                    "branch_model": label,
+                    "category": "Promoters",
+                    "percentage": row["promoters_percent"],
+                    "count": row["promoters_count"],
+                    "nps_score": row["nps_score"],
+                }
+            )
+    else:
+        # When there's no branch data, aggregate by model across all training datasets
+        aggregated_data = []
+        for model_name, group in disneyland_data.groupby("model_name"):
+            # Sum counts across all training datasets for this model
+            total_promoters = group["promoters_count"].sum()
+            total_passives = group["passives_count"].sum()
+            total_detractors = group["detractors_count"].sum()
+            total_samples = total_promoters + total_passives + total_detractors
+
+            # Recalculate percentages so they add up to 100%
+            if total_samples > 0:
+                promoters_pct = (total_promoters / total_samples) * 100
+                passives_pct = (total_passives / total_samples) * 100
+                detractors_pct = (total_detractors / total_samples) * 100
+                nps_score = promoters_pct - detractors_pct
+            else:
+                promoters_pct = passives_pct = detractors_pct = nps_score = 0
+
+            aggregated_data.append({
+                "model_name": model_name,
+                "promoters_count": total_promoters,
+                "passives_count": total_passives,
+                "detractors_count": total_detractors,
+                "promoters_percent": promoters_pct,
+                "passives_percent": passives_pct,
+                "detractors_percent": detractors_pct,
+                "nps_score": nps_score,
+            })
+
+        # Prepare plot data from aggregated results
+        plot_data = []
+        for model_data in aggregated_data:
+            model_name = model_data["model_name"]
+
+            # Add detractors (bottom layer)
+            plot_data.append(
+                {
+                    "branch_model": model_name,
+                    "category": "Detractors",
+                    "percentage": model_data["detractors_percent"],
+                    "count": model_data["detractors_count"],
+                    "nps_score": model_data["nps_score"],
+                }
+            )
+
+            # Add passives (middle layer)
+            plot_data.append(
+                {
+                    "branch_model": model_name,
+                    "category": "Passives",
+                    "percentage": model_data["passives_percent"],
+                    "count": model_data["passives_count"],
+                    "nps_score": model_data["nps_score"],
+                }
+            )
+
+            # Add promoters (top layer)
+            plot_data.append(
+                {
+                    "branch_model": model_name,
+                    "category": "Promoters",
+                    "percentage": model_data["promoters_percent"],
+                    "count": model_data["promoters_count"],
+                    "nps_score": model_data["nps_score"],
+                }
+            )
+
+    plot_df = pd.DataFrame(plot_data)
+
+    # Create stacked bar chart with appropriate title and labels
+    chart_title = "NPS Categories Grouped by Branch" if has_branch_col else "NPS Categories by Model"
+    x_label = "Branch<br>Model" if has_branch_col else "Model"
+
+    fig = px.bar(
+        plot_df,
+        x="branch_model",
+        y="percentage",
+        color="category",
+        title=chart_title,
+        labels={
+            "branch_model": x_label,
+            "percentage": "Percentage (%)",
+            "category": "NPS Category",
+        },
+        color_discrete_map={
+            "Promoters": "#22c55e",  # green
+            "Passives": "#eab308",  # yellow
+            "Detractors": "#ef4444",  # red
+        },
+    )
+
+    fig.update_layout(xaxis_tickangle=-45, height=500, showlegend=True, barmode="stack")
+
+    return fig
+
+
+def calculate_actual_nps_from_ratings(nps_df, branch):
+    """Calculate actual NPS from customer ratings in the Disney dataset for a specific branch.
+
+    Maps star ratings to NPS categories:
+    - 5 stars → Promoter (9-10 on NPS scale)
+    - 4 stars → Passive (7-8 on NPS scale)
+    - 1-3 stars → Detractor (0-6 on NPS scale)
+
+    Args:
+        nps_df: DataFrame with NPS results (not used, but kept for compatibility)
+        branch: Branch name (California, Paris, or HongKong)
+
+    Returns:
+        Dictionary with NPS metrics or None if data unavailable
+    """
+    try:
+        import kagglehub
+        import yaml
+
+        # Load dataset configuration
+        config_path = Path("config/datasets.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        dataset_config = config["datasets"]["disneyland"]
+
+        # Check for cached dataset
+        cache_dir = Path("data/raw")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        dataset_slug = dataset_config["dataset_id"].replace("/", "_")
+        local_cache_path = cache_dir / f"{dataset_slug}.csv"
+
+        if local_cache_path.exists():
+            # Load from cache
+            try:
+                df = pd.read_csv(local_cache_path, encoding="utf-8")
+            except UnicodeDecodeError:
+                df = pd.read_csv(local_cache_path, encoding="latin-1")
+        else:
+            # Download and cache
+            dataset_path = kagglehub.dataset_download(dataset_config["dataset_id"])
+
+            # Find the CSV file
+            import os
+
+            csv_files = []
+            for root, dirs, files in os.walk(dataset_path):
+                for file in files:
+                    if file.endswith(".csv"):
+                        csv_files.append(os.path.join(root, file))
+
+            if not csv_files:
+                return None
+
+            csv_path = csv_files[0]
+
+            # Load CSV
+            try:
+                df = pd.read_csv(csv_path, encoding="utf-8")
+            except UnicodeDecodeError:
+                df = pd.read_csv(csv_path, encoding="latin-1")
+
+            # Cache locally
+            df.to_csv(local_cache_path, index=False)
+
+        # Filter by branch
+        branch_df = df[df["Branch"] == f"Disneyland_{branch}"].copy()
+
+        if branch_df.empty:
+            return None
+
+        # Calculate NPS from star ratings
+        # NPS mapping: 5★→Promoter, 4★→Passive, 1-3★→Detractor
+        promoters = len(branch_df[branch_df["Rating"] == 5])
+        passives = len(branch_df[branch_df["Rating"] == 4])
+        detractors = len(branch_df[branch_df["Rating"] <= 3])
+
+        total_samples = len(branch_df)
+
+        if total_samples == 0:
+            return None
+
+        promoters_pct = (promoters / total_samples) * 100
+        passives_pct = (passives / total_samples) * 100
+        detractors_pct = (detractors / total_samples) * 100
+        nps_score = promoters_pct - detractors_pct
+
+        return {
+            "nps_score": nps_score,
+            "promoters_percent": promoters_pct,
+            "passives_percent": passives_pct,
+            "detractors_percent": detractors_pct,
+            "branch": branch,
+            "total_samples": total_samples,
+        }
+
+    except Exception as e:
+        print(f"Error calculating actual NPS for {branch}: {e}")
+        return None
+
+
+def create_nps_gauge_chart(nps_data, branch_name):
+    """Create a gauge chart showing NPS score for a branch."""
+    if not nps_data:
+        # Empty gauge
+        fig = go.Figure(
+            go.Indicator(
+                mode="gauge",
+                value=0,
+                gauge={"axis": {"range": [-100, 100]}},
+            )
+        )
+        fig.update_layout(height=300)
+        return fig
+
+    nps_score = nps_data["nps_score"]
+
+    # Determine color based on NPS score
+    if nps_score >= 30:
+        color = "green"
+    elif nps_score >= 0:
+        color = "yellow"
+    else:
+        color = "red"
+
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=nps_score,
+            gauge={
+                "axis": {"range": [-100, 100]},
+                "bar": {"color": color},
+                "steps": [
+                    {"range": [-100, 0], "color": "lightcoral"},
+                    {"range": [0, 30], "color": "lightyellow"},
+                    {"range": [30, 100], "color": "lightgreen"},
+                ],
+            },
+        )
+    )
+
+    fig.update_layout(height=300)
+    return fig
+
+
+def create_nps_stacked_chart_for_branch(nps_df, branch):
+    """Create stacked bar chart showing NPS categories for a specific branch."""
+    if nps_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title=f"No NPS Data for {branch}")
+        return fig
+
+    # Filter for specific branch
+    dataset_col = "test_dataset" if "test_dataset" in nps_df.columns else "dataset"
+    if "branch" in nps_df.columns:
+        branch_data = nps_df[
+            (nps_df[dataset_col] == "disneyland") & (nps_df["branch"] == f"Disneyland_{branch}")
+        ].copy()
+    else:
+        # For aggregated results, use all Disneyland data (no branch filtering)
+        branch_data = nps_df[nps_df[dataset_col] == "disneyland"].copy()
+
+    if branch_data.empty:
+        fig = go.Figure()
+        fig.update_layout(title=f"No Data for {branch}")
+        return fig
+
+    # Aggregate counts by model (across all training datasets)
+    aggregated_data = []
+    for model_name, group in branch_data.groupby("model_name"):
+        # Sum counts across all training datasets for this model
+        total_promoters = group["promoters_count"].sum()
+        total_passives = group["passives_count"].sum()
+        total_detractors = group["detractors_count"].sum()
+        total_samples = total_promoters + total_passives + total_detractors
+
+        # Recalculate percentages so they add up to 100%
+        if total_samples > 0:
+            promoters_pct = (total_promoters / total_samples) * 100
+            passives_pct = (total_passives / total_samples) * 100
+            detractors_pct = (total_detractors / total_samples) * 100
+            nps_score = promoters_pct - detractors_pct
+        else:
+            promoters_pct = passives_pct = detractors_pct = nps_score = 0
+
+        aggregated_data.append({
+            "model_name": model_name,
+            "promoters_count": total_promoters,
+            "passives_count": total_passives,
+            "detractors_count": total_detractors,
+            "promoters_percent": promoters_pct,
+            "passives_percent": passives_pct,
+            "detractors_percent": detractors_pct,
+            "nps_score": nps_score,
+        })
+
+    # Prepare data for stacked bar chart
+    plot_data = []
+    for model_data in aggregated_data:
+        model_name = model_data["model_name"]
+
+        # Add detractors (bottom layer)
+        plot_data.append(
+            {
+                "model": model_name,
+                "category": "Detractors",
+                "percentage": model_data["detractors_percent"],
+                "count": model_data["detractors_count"],
+                "nps_score": model_data["nps_score"],
+            }
+        )
+
+        # Add passives (middle layer)
+        plot_data.append(
+            {
+                "model": model_name,
+                "category": "Passives",
+                "percentage": model_data["passives_percent"],
+                "count": model_data["passives_count"],
+                "nps_score": model_data["nps_score"],
+            }
+        )
+
+        # Add promoters (top layer)
+        plot_data.append(
+            {
+                "model": model_name,
+                "category": "Promoters",
+                "percentage": model_data["promoters_percent"],
+                "count": model_data["promoters_count"],
+                "nps_score": model_data["nps_score"],
+            }
+        )
+
+    plot_df = pd.DataFrame(plot_data)
+
+    # Create stacked bar chart
+    fig = px.bar(
+        plot_df,
+        x="model",
+        y="percentage",
+        color="category",
+        labels={"model": "Model", "percentage": "Percentage (%)", "category": "NPS Category"},
+        color_discrete_map={
+            "Promoters": "#22c55e",  # green
+            "Passives": "#eab308",  # yellow
+            "Detractors": "#ef4444",  # red
+        },
+    )
+
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        height=280,
+        showlegend=False,
+        barmode="stack",
+        margin=dict(t=10, b=40, l=40, r=10),
+    )
+
+    return fig
+
+
+def create_nps_accuracy_chart_by_model(nps_df, model_name):
+    """Create bar chart showing accuracy by training dataset for a specific model.
+
+    Args:
+        nps_df: DataFrame with NPS results
+        model_name: Model name (e.g., "BERT-tiny", "DistilBERT-base")
+
+    Returns:
+        Plotly figure with bars for each training dataset and an average line
+    """
+    if nps_df.empty:
+        fig = go.Figure()
+        fig.update_layout(margin=dict(t=10, b=40, l=40, r=10))
+        return fig
+
+    # Filter for Disneyland data with valid accuracy for this model
+    disneyland_data = nps_df[
+        (nps_df["test_dataset"] == "disneyland")
+        & (nps_df["accuracy_percent"].notna())
+        & (nps_df["model_name"] == model_name)
+    ].copy()
+
+    # Remove entries with errors
+    if "error" in disneyland_data.columns:
+        disneyland_data = disneyland_data[disneyland_data["error"].isna()]
+
+    if disneyland_data.empty:
+        fig = go.Figure()
+        fig.update_layout(margin=dict(t=10, b=40, l=40, r=10))
+        return fig
+
+    # Group by training dataset and calculate average accuracy
+    accuracy_data = []
+    for dataset, group in disneyland_data.groupby("training_dataset"):
+        avg_accuracy = group["accuracy_percent"].mean()
+        accuracy_data.append({"training_dataset": dataset, "accuracy_percent": avg_accuracy})
+
+    if not accuracy_data:
+        fig = go.Figure()
+        fig.update_layout(margin=dict(t=10, b=40, l=40, r=10))
+        return fig
+
+    accuracy_df = pd.DataFrame(accuracy_data)
+
+    # Calculate overall average across all training datasets
+    overall_avg = accuracy_df["accuracy_percent"].mean()
+
+    # Calculate dynamic y-axis range
+    min_accuracy = accuracy_df["accuracy_percent"].min()
+    max_accuracy = 100
+
+    # Set y-axis to start slightly below the minimum value (5% below or at least at 0)
+    y_min = max(0, min(min_accuracy - 5, overall_avg - 10))
+
+    # Color map for each training dataset
+    color_map = {
+        "imdb": "#3b82f6",  # blue
+        "sst2": "#8b5cf6",  # purple
+        "amazon": "#06b6d4",  # cyan
+        "yelp": "#10b981",  # emerald
+    }
+
+    # Create bar chart
+    fig = go.Figure()
+
+    # Add bars for each training dataset
+    for _, row in accuracy_df.iterrows():
+        dataset = row["training_dataset"]
+        accuracy = row["accuracy_percent"]
+        fig.add_trace(
+            go.Bar(
+                x=[dataset],
+                y=[accuracy],
+                name=dataset,
+                marker_color=color_map.get(dataset, "#3b82f6"),
+                text=f"{accuracy:.1f}%",
+                textposition="outside",
+                textfont_size=9,
+                showlegend=False,
+            )
+        )
+
+    # Add average line
+    fig.add_trace(
+        go.Scatter(
+            x=accuracy_df["training_dataset"].tolist(),
+            y=[overall_avg] * len(accuracy_df),
+            mode="lines",
+            name=f"Average: {overall_avg:.1f}%",
+            line=dict(color="red", width=2, dash="dash"),
+            showlegend=True,
+        )
+    )
+
+    fig.update_layout(
+        xaxis_title="Training Dataset",
+        yaxis_title="Accuracy (%)",
+        xaxis_tickangle=0,
+        height=280,
+        showlegend=True,
+        legend=dict(x=0.02, y=0.98, bgcolor="rgba(255,255,255,0.8)"),
+        margin=dict(t=10, b=40, l=40, r=10),
+        yaxis=dict(range=[y_min, max_accuracy]),
+    )
+
+    return fig
+
+
+def create_nps_distribution_chart(nps_df):
+    """Create stacked bar chart showing NPS category distribution."""
+    if nps_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title="No NPS Data Available")
+        return fig
+
+    # Filter out entries with errors
+    valid_data = nps_df.dropna(
+        subset=["promoters_percent", "passives_percent", "detractors_percent"]
+    )
+
+    if valid_data.empty:
+        fig = go.Figure()
+        fig.update_layout(title="No Valid NPS Data Available")
+        return fig
+
+    # Prepare data for stacked bar chart
+    plot_data = []
+    for _, row in valid_data.iterrows():
+        model_dataset = f"{row['model_name']}<br>({row['dataset']})"
+        plot_data.extend(
+            [
+                {
+                    "model_dataset": model_dataset,
+                    "category": "Promoters",
+                    "percentage": row["promoters_percent"],
+                    "count": row["promoters_count"],
+                },
+                {
+                    "model_dataset": model_dataset,
+                    "category": "Passives",
+                    "percentage": row["passives_percent"],
+                    "count": row["passives_count"],
+                },
+                {
+                    "model_dataset": model_dataset,
+                    "category": "Detractors",
+                    "percentage": row["detractors_percent"],
+                    "count": row["detractors_count"],
+                },
+            ]
+        )
+
+    plot_df = pd.DataFrame(plot_data)
+
+    # Create stacked bar chart
+    fig = px.bar(
+        plot_df,
+        x="model_dataset",
+        y="percentage",
+        color="category",
+        title="NPS Category Distribution by Model",
+        labels={
+            "model_dataset": "Model (Dataset)",
+            "percentage": "Percentage (%)",
+            "category": "NPS Category",
+        },
+        color_discrete_map={
+            "Promoters": "#22c55e",  # green
+            "Passives": "#eab308",  # yellow
+            "Detractors": "#ef4444",  # red
+        },
+    )
+
+    fig.update_layout(xaxis_tickangle=-45, height=300, showlegend=False, barmode="stack")
+
+    return fig
+
+
+def create_nps_summary_table(nps_df):
+    """Create formatted summary table for NPS results."""
+    if nps_df.empty:
+        return pd.DataFrame()
+
+    # Filter out entries with errors and select relevant columns
+    valid_data = nps_df.dropna(subset=["nps_score"]).copy()
+
+    if valid_data.empty:
+        return pd.DataFrame()
+
+    # Handle column name differences between old and new formats
+    dataset_col = "test_dataset" if "test_dataset" in valid_data.columns else "dataset"
+
+    # Format the table
+    columns_to_select = [
+        "model_name",
+        dataset_col,
+        "nps_score",
+        "promoters_percent",
+        "passives_percent",
+        "detractors_percent",
+    ]
+
+    # Add training_dataset column if it exists (for new format)
+    if "training_dataset" in valid_data.columns:
+        columns_to_select.insert(2, "training_dataset")
+
+    display_df = valid_data[columns_to_select].copy()
+
+    # Rename columns for display
+    column_names = [
+        "Model",
+        "Dataset",
+        "NPS Score",
+        "Promoters (%)",
+        "Passives (%)",
+        "Detractors (%)",
+    ]
+    if "training_dataset" in valid_data.columns:
+        column_names.insert(2, "Training Dataset")
+
+    display_df.columns = column_names
+
+    # Format percentages
+    for col in ["Promoters (%)", "Passives (%)", "Detractors (%)"]:
+        display_df[col] = display_df[col].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A")
+
+    # Format NPS score
+    display_df["NPS Score"] = display_df["NPS Score"].apply(
+        lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
+    )
+
+    return display_df
+
+
+def update_nps_dashboard():
+    """Update NPS dashboard with latest results."""
+    # Load latest NPS data
+    nps_df = load_nps_results()
+
+    # Get available model families from the data
+    model_families = []
+    if not nps_df.empty:
+        dataset_col = "test_dataset" if "test_dataset" in nps_df.columns else "dataset"
+        # For cross-dataset evaluation, we don't have branch-specific data
+        if "branch" in nps_df.columns:
+            disneyland_data = nps_df[
+                (nps_df[dataset_col] == "disneyland") & (nps_df["branch"].notna())
+            ]
+        else:
+            disneyland_data = nps_df[nps_df[dataset_col] == "disneyland"]
+        if not disneyland_data.empty:
+            # Extract model families (e.g., "BERT" from "BERT-tiny")
+            model_names = disneyland_data["model_name"].tolist()
+            model_families = sorted(set(name.split("-")[0] for name in model_names))
+
+    # Create visualizations showing all models
+    nps_stacked_fig = create_nps_stacked_chart(nps_df)
+
+    # Get unique models for accuracy charts
+    accuracy_chart_models = []
+    if not nps_df.empty:
+        dataset_col = "test_dataset" if "test_dataset" in nps_df.columns else "dataset"
+        disneyland_data = nps_df[
+            (nps_df[dataset_col] == "disneyland") & (nps_df["accuracy_percent"].notna())
+        ]
+        if not disneyland_data.empty:
+            # Get unique models, sorted alphabetically
+            accuracy_chart_models = sorted(disneyland_data["model_name"].unique().tolist())
+
+    # Create accuracy charts for all available models
+    nps_accuracy_charts = []
+    for model_name in accuracy_chart_models:
+        chart = create_nps_accuracy_chart_by_model(nps_df, model_name)
+        nps_accuracy_charts.append((model_name, chart))
+
+    nps_table = create_nps_summary_table(nps_df)
+
+    # Create summary markdown
+    if not nps_df.empty:
+        dataset_col = "test_dataset" if "test_dataset" in nps_df.columns else "dataset"
+        if "branch" in nps_df.columns:
+            disneyland_results = nps_df[
+                (nps_df[dataset_col] == "disneyland") & (nps_df["branch"].notna())
+            ].copy()  # Ensure it's a DataFrame
+        else:
+            disneyland_results = nps_df[nps_df[dataset_col] == "disneyland"].copy()
+
+        if not disneyland_results.empty:
+            # Calculate stats across all branches/models
+            avg_nps = disneyland_results["nps_score"].mean()
+            has_branch_col = "branch" in disneyland_results.columns
+
+            # Find best performing entry (branch or model)
+            best_nps = float("-inf")
+            best_identifier = "N/A"
+            for idx, row in disneyland_results.iterrows():
+                if row["nps_score"] > best_nps:
+                    best_nps = row["nps_score"]
+                    if has_branch_col and pd.notna(row.get("branch")):
+                        best_identifier = str(row["branch"]).replace("Disneyland_", "")
+                    else:
+                        # Use model name and training dataset instead
+                        model = row["model_name"]
+                        training_ds = row.get("training_dataset", "unknown")
+                        best_identifier = f"{model} (trained on {training_ds})"
+
+            best_nps_score = best_nps
+            avg_accuracy = disneyland_results["accuracy_percent"].mean()
+
+            if has_branch_col:
+                summary_md = f"""## 🎯 Estimated Net Promoter Score (e-NPS) Analysis
+
+**Disneyland Parks Overview:**
+- **Branches Analyzed:** California, Paris, HongKong
+- **Models Evaluated:** {len(set(disneyland_results["model_name"]))}
+- **Average NPS Score:** {avg_nps:.1f}
+- **Best Performing Branch:** {best_identifier} ({best_nps_score:.1f} NPS)
+- **Average Accuracy:** {avg_accuracy:.1f}%
+
+**NPS Categories:**
+- **Promoters (Green):** High-confidence positive predictions (9-10 on NPS scale)
+- **Passives (Yellow):** Medium-confidence positive or uncertain predictions (7-8)
+- **Detractors (Red):** Negative predictions (0-6)
+
+**NPS Formula:** % Promoters - % Detractors
+
+*💡 NPS scores range from -100 to 100. Higher scores indicate better customer loyalty.*
+"""
+            else:
+                training_datasets = "N/A"
+                if "training_dataset" in disneyland_results.columns:
+                    training_datasets = len(set(disneyland_results["training_dataset"]))
+
+                summary_md = f"""## 🎯 Estimated Net Promoter Score (e-NPS) Analysis
+
+**Cross-Dataset Evaluation:**
+- **Models Evaluated:** {len(set(disneyland_results["model_name"]))}
+- **Training Datasets:** {training_datasets}
+- **Average NPS Score:** {avg_nps:.1f}
+- **Best Performing:** {best_identifier} ({best_nps_score:.1f} NPS)
+- **Average Accuracy:** {avg_accuracy:.1f}%
+
+**NPS Categories:**
+- **Promoters (Green):** High-confidence positive predictions (9-10 on NPS scale)
+- **Passives (Yellow):** Medium-confidence positive or uncertain predictions (7-8)
+- **Detractors (Red):** Negative predictions (0-6)
+
+**NPS Formula:** % Promoters - % Detractors
+
+*💡 NPS scores range from -100 to 100. Higher scores indicate better customer loyalty.*
+"""
+        else:
+            summary_md = """
+### No Disneyland NPS Results
+
+Run NPS estimation on Disneyland dataset:
+
+```bash
+moodbench estimated-nps --all-models --datasets disneyland
+```
+
+This will evaluate all trained models on Disneyland customer reviews.
+"""
+    else:
+        summary_md = """
+### No NPS Results Available
+
+Run NPS estimation first:
+
+```bash
+moodbench estimated-nps --all-models --datasets disneyland
+```
+
+This will evaluate all trained models on Disneyland customer reviews.
+"""
+
+    # Calculate actual NPS for each branch
+    california_nps = calculate_actual_nps_from_ratings(nps_df, "California")
+    paris_nps = calculate_actual_nps_from_ratings(nps_df, "Paris")
+    hongkong_nps = calculate_actual_nps_from_ratings(nps_df, "HongKong")
+
+    california_gauge_fig = create_nps_gauge_chart(california_nps, "California")
+    paris_gauge_fig = create_nps_gauge_chart(paris_nps, "Paris")
+    hongkong_gauge_fig = create_nps_gauge_chart(hongkong_nps, "Hong Kong")
+
+    california_chart_fig = create_nps_stacked_chart_for_branch(nps_df, "California")
+    paris_chart_fig = create_nps_stacked_chart_for_branch(nps_df, "Paris")
+    hongkong_chart_fig = create_nps_stacked_chart_for_branch(nps_df, "HongKong")
+
+    if not nps_df.empty and not nps_table.empty:
+        return (
+            summary_md,
+            california_gauge_fig,
+            paris_gauge_fig,
+            hongkong_gauge_fig,
+            california_chart_fig,
+            paris_chart_fig,
+            hongkong_chart_fig,
+            nps_accuracy_charts,  # Return list of (model_name, chart) tuples
+            nps_table,
+            gr.Markdown(visible=False),
+        )
+    else:
+        empty_fig = go.Figure()
+        empty_fig.update_layout(title="No Data Available")
+        return (
+            summary_md,
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            [],  # Empty list of charts
+            gr.Dataframe(visible=False),
+            gr.Markdown(value="### No NPS data available. Run estimation first."),
+        )
 
 
 def create_latency_distribution_chart(results_df):
@@ -1304,13 +2196,13 @@ def format_benchmark_results_table(results_df):
 
 def create_interface():
     """Create the Gradio interface."""
-    with gr.Blocks(title="EmoBench - LLM Benchmark UI") as interface:
+    with gr.Blocks(title="MoodBench - LLM Benchmark UI") as interface:
         gr.Markdown("""
-        # 🤖 EmoBench - Multi-LLM Sentiment Analysis Benchmark
+        # 🤖 MoodBench - Multi-LLM Sentiment Analysis Benchmark
 
         **Fast benchmarking of small language models (4M-410M parameters) for sentiment analysis.**
 
-        This interface provides access to all EmoBench functionality through an intuitive web UI.
+        This interface provides access to all MoodBench functionality through an intuitive web UI.
         """)
 
         with gr.Tabs():
@@ -1323,7 +2215,7 @@ def create_interface():
                 For long-running trainings, use the command line interface instead:
 
                 ```bash
-                uv run emobench train --model <model_name> --dataset <dataset_name>
+                uv run moodbench train --model <model_name> --dataset <dataset_name>
                 ```
 
                 The web interface works best for quick training runs on smaller models like BERT-tiny and BERT-mini.
@@ -1620,17 +2512,17 @@ def create_interface():
                             """)
 
                 # Row 4: Original scatter plot
-                gr.Markdown("#### Model Performance: Accuracy vs Latency")
+                gr.Markdown("#### Model Performance: Latency vs Accuracy")
                 scatter_plot = gr.Plot(value=initial_scatter_fig)
                 with gr.Accordion("📖 What does this chart show?", open=False):
                     gr.Markdown("""
-                    **Model Performance: Accuracy vs Latency** shows the fundamental trade-off between quality and speed.
+                    **Average Accuracy by Model** shows the overall accuracy of each model across all Disneyland locations.
 
-                    - **X-axis (Accuracy)**: Percentage of correct predictions (higher = better quality)
-                    - **Y-axis (Latency)**: Mean response time in milliseconds (lower = faster)
-                    - **Individual runs**: Small dots show results from individual benchmark runs
-                    - **Model means**: Large diamonds show average performance across all runs per model
-                    - **Decision making**: Use this to choose models based on your accuracy vs. speed requirements
+                    - **Accuracy**: Average percentage of correct predictions against actual star ratings (1-5)
+                    - **Higher values**: Indicate better alignment between sentiment analysis and customer ratings
+                    - **Averaged across locations**: Single value per model combining California, Paris, and Hong Kong results
+                    - **Cross-domain evaluation**: Models trained on other datasets (Yelp, IMDB) tested on Disneyland reviews
+                    - **Percentage labels**: Values shown as formatted percentages on each bar
                     """)
 
                 if not initial_results.empty:
@@ -1691,6 +2583,204 @@ Run some benchmarks first to see results here:
                         no_data_message,
                     ],
                     queue=False,  # Don't queue the initial load
+                )
+
+            # Tab 7: e-NPS (Estimated Net Promoter Score)
+            with gr.TabItem("🎯 e-NPS"):
+                gr.Markdown("### Estimated Net Promoter Score Analysis")
+                gr.Markdown("""
+                **Estimated NPS (e-NPS)** measures customer loyalty based on model predictions.
+
+                This analysis estimates Net Promoter Score from sentiment analysis predictions,
+                mapping confidence scores to NPS categories (Promoters, Passives, Detractors).
+                """)
+
+                # Refresh button
+                nps_refresh_btn = gr.Button("🔄 Refresh e-NPS Analysis", variant="secondary")
+
+                # Create updatable components with initial NPS data
+                initial_nps_df = load_nps_results()
+
+                # Calculate actual NPS for each branch
+                california_nps = calculate_actual_nps_from_ratings(initial_nps_df, "California")
+                paris_nps = calculate_actual_nps_from_ratings(initial_nps_df, "Paris")
+                hongkong_nps = calculate_actual_nps_from_ratings(initial_nps_df, "HongKong")
+
+                initial_california_gauge = create_nps_gauge_chart(california_nps, "California")
+                initial_paris_gauge = create_nps_gauge_chart(paris_nps, "Paris")
+                initial_hongkong_gauge = create_nps_gauge_chart(hongkong_nps, "Hong Kong")
+
+                initial_california_chart = create_nps_stacked_chart_for_branch(
+                    initial_nps_df, "California"
+                )
+                initial_paris_chart = create_nps_stacked_chart_for_branch(initial_nps_df, "Paris")
+                initial_hongkong_chart = create_nps_stacked_chart_for_branch(
+                    initial_nps_df, "HongKong"
+                )
+
+                # Get unique models for accuracy charts
+                initial_accuracy_chart_models = []
+                if not initial_nps_df.empty:
+                    dataset_col = "test_dataset" if "test_dataset" in initial_nps_df.columns else "dataset"
+                    disneyland_data = initial_nps_df[
+                        (initial_nps_df[dataset_col] == "disneyland")
+                        & (initial_nps_df["accuracy_percent"].notna())
+                    ]
+                    if not disneyland_data.empty:
+                        initial_accuracy_chart_models = sorted(
+                            disneyland_data["model_name"].unique().tolist()
+                        )
+
+                # Create accuracy charts for all available models
+                initial_nps_accuracy_charts = []
+                for model_name in initial_accuracy_chart_models:
+                    chart = create_nps_accuracy_chart_by_model(initial_nps_df, model_name)
+                    initial_nps_accuracy_charts.append((model_name, chart))
+
+                initial_nps_table = create_nps_summary_table(initial_nps_df)
+
+                # Summary
+                nps_summary_text = gr.Markdown(value="Loading NPS data...")
+
+                # NPS Analysis by Location
+                gr.Markdown("#### NPS Analysis by Location")
+                gr.Markdown(
+                    "*NPS Mapping: 5★ = Promoter, 4★ = Passive, 1-3★ = Detractor. "
+                    "NPS Score = % Promoters - % Detractors*",
+                    elem_classes=["text-sm", "text-gray-600"],
+                )
+
+                # California Row
+                gr.Markdown("##### 🇺🇸 California")
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("**Actual NPS Score**<br>(from customer ratings)")
+                        california_gauge = gr.Plot(value=initial_california_gauge)
+                    with gr.Column(scale=2):
+                        gr.Markdown("**NPS Categories by Model**<br>(estimated from predictions)")
+                        california_plot = gr.Plot(value=initial_california_chart)
+
+                # Paris Row
+                gr.Markdown("##### 🇫🇷 Paris")
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("**Actual NPS Score**<br>(from customer ratings)")
+                        paris_gauge = gr.Plot(value=initial_paris_gauge)
+                    with gr.Column(scale=2):
+                        gr.Markdown("**NPS Categories by Model**<br>(estimated from predictions)")
+                        paris_plot = gr.Plot(value=initial_paris_chart)
+
+                # Hong Kong Row
+                gr.Markdown("##### 🇭🇰 Hong Kong")
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("**Actual NPS Score**<br>(from customer ratings)")
+                        hongkong_gauge = gr.Plot(value=initial_hongkong_gauge)
+                    with gr.Column(scale=2):
+                        gr.Markdown("**NPS Categories by Model**<br>(estimated from predictions)")
+                        hongkong_plot = gr.Plot(value=initial_hongkong_chart)
+
+                # Accuracy Charts by Model
+                gr.Markdown("#### Model Accuracy by Training Dataset")
+                gr.Markdown(
+                    "*Comparison of how each model performs when trained on different datasets*"
+                )
+
+                # Create charts in rows of 3
+                accuracy_chart_components = []
+                num_charts = len(initial_nps_accuracy_charts)
+
+                for i in range(0, num_charts, 3):
+                    with gr.Row():
+                        for j in range(3):
+                            idx = i + j
+                            if idx < num_charts:
+                                model_name, chart = initial_nps_accuracy_charts[idx]
+                                with gr.Column(scale=1):
+                                    name_component = gr.Markdown(value=f"**{model_name}**")
+                                    chart_component = gr.Plot(value=chart)
+                                    accuracy_chart_components.append((name_component, chart_component))
+                            else:
+                                # Placeholder empty column
+                                with gr.Column(scale=1):
+                                    pass
+
+                with gr.Accordion("📖 What do these charts show?", open=False):
+                    gr.Markdown("""
+                    **NPS Categories by Location** shows the breakdown of predictions into NPS categories for each Disneyland park separately.
+
+                    - **Promoters (Green)**: High-confidence positive predictions (9-10 on NPS scale)
+                    - **Passives (Yellow)**: Medium-confidence positive or uncertain predictions (7-8)
+                    - **Detractors (Red)**: Negative predictions (0-6)
+                    - **Separate charts**: One chart per Disneyland location (California, Paris, Hong Kong)
+                    - **Model comparison**: Each location chart compares all evaluated models
+                    """)
+
+                # NPS Results Table
+                if not initial_nps_table.empty:
+                    nps_results_table = gr.Dataframe(
+                        value=initial_nps_table, label="NPS Results Summary"
+                    )
+                    nps_no_data_message = gr.Markdown(visible=False)
+                else:
+                    nps_results_table = gr.Dataframe(visible=False)
+                    nps_no_data_message = gr.Markdown(
+                        value="""
+### No NPS Data Available
+
+Run NPS estimation first:
+
+```bash
+moodbench estimated-nps --all-models --all-datasets
+```
+
+This will evaluate all trained models and estimate NPS from their predictions.
+"""
+                    )
+
+                # Create wrapper function to handle dynamic charts
+                def update_nps_dashboard_wrapper():
+                    result = update_nps_dashboard()
+                    summary_md, ca_gauge, pa_gauge, hk_gauge, ca_plot, pa_plot, hk_plot, charts_list, table, no_data = result
+
+                    # Flatten charts_list into individual name/chart pairs
+                    flattened_outputs = [summary_md, ca_gauge, pa_gauge, hk_gauge, ca_plot, pa_plot, hk_plot]
+
+                    # Add chart names and plots
+                    for name_comp, chart_comp in accuracy_chart_components:
+                        idx = accuracy_chart_components.index((name_comp, chart_comp))
+                        if idx < len(charts_list):
+                            model_name, chart = charts_list[idx]
+                            flattened_outputs.extend([f"**{model_name}**", chart])
+                        else:
+                            flattened_outputs.extend(["", go.Figure()])
+
+                    flattened_outputs.extend([table, no_data])
+                    return flattened_outputs
+
+                # Flatten accuracy chart components into outputs list
+                accuracy_outputs = []
+                for name_comp, chart_comp in accuracy_chart_components:
+                    accuracy_outputs.extend([name_comp, chart_comp])
+
+                # Set up refresh functionality
+                nps_refresh_btn.click(
+                    fn=update_nps_dashboard_wrapper,
+                    inputs=[],
+                    outputs=[
+                        nps_summary_text,
+                        california_gauge,
+                        paris_gauge,
+                        hongkong_gauge,
+                        california_plot,
+                        paris_plot,
+                        hongkong_plot,
+                    ]
+                    + accuracy_outputs
+                    + [
+                        nps_results_table,
+                        nps_no_data_message,
+                    ],
                 )
 
     return interface
